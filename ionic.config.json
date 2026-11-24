@@ -1,0 +1,7 @@
+{
+  "name": "examen_APP_CNE",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
