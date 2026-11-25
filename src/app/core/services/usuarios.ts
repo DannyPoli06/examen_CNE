@@ -130,17 +130,18 @@ export class UsuariosService {
 
       const ahora = new Date().toISOString();
       const perfil: UsuarioPerfil = {
-        uID: nuevoUid,
-        cedula: cedulaLimpia,
-        nombres: datos.nombres.trim(),
-        rol: datos.rol,
-        provinciaID: datos.provinciaID,
-        primeraVezAcceso: true,
-        activo: true,
-        creadoEn: ahora,
-        ...(datos.recintoID ? { recintoID: datos.recintoID } : {}),
-        ...(datos.jrvID ? { jrvID: datos.jrvID } : {}),
-      };
+      uID: nuevoUid,
+      cedula: cedulaLimpia,
+      correo,
+      nombres: datos.nombres.trim(),
+      rol: datos.rol,
+      provinciaID: datos.provinciaID,
+      primeraVezAcceso: true,
+      activo: true,
+      creadoEn: ahora,
+      ...(datos.recintoID ? { recintoID: datos.recintoID } : {}),
+      ...(datos.jrvID ? { jrvID: datos.jrvID } : {}),
+    };
 
       await setDoc(doc(firestoreDb, 'usuarios', nuevoUid), perfil);
       return perfil;
