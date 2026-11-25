@@ -1,6 +1,12 @@
 <ion-header class="ion-no-border">
   <ion-toolbar class="cne-toolbar">
     <ion-title>Recintos Electorales</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="solid" color="warning" class="btn-nuevo-header" (click)="abrirModalRecinto()">
+        <ion-icon slot="start" name="add-circle-outline"></ion-icon>
+        Nuevo Recinto
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
@@ -72,6 +78,19 @@
           <ion-card-content>
             <p class="direccion-texto">{{ recinto.direccion }}</p>
 
+            <div class="coord-info-row">
+              <span class="coord-label">Coordinador:</span>
+              @if (recinto.coordinadorNombre) {
+                <strong class="coord-nombre">{{ recinto.coordinadorNombre }}</strong>
+              } @else {
+                <span class="sin-coord">Sin asignar</span>
+                <ion-button size="small" fill="outline" color="warning" (click)="abrirAsignarCoordinador(recinto)">
+                  <ion-icon slot="start" name="person-add-outline"></ion-icon>
+                  Asignar
+                </ion-button>
+              }
+            </div>
+
             <div class="metricas-recinto">
               <div>
                 <small>Actas Recibidas</small>
@@ -110,4 +129,110 @@
       }
     }
   </div>
+
+  <!-- Modal Crear Recinto -->
+  <ion-modal [isOpen]="modalRecintoAbierto()">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar class="cne-toolbar">
+          <ion-title>Nuevo Recinto Electoral</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="cerrarModalRecinto()">
+              <ion-icon name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <div class="form-modal-box">
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Nombre del Recinto" labelPlacement="floating" [(ngModel)]="nuevoNombreRecinto" placeholder="Ej. COLEGIO NACIONAL MEJIA"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Cantón" labelPlacement="floating" [(ngModel)]="nuevoCanton"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Parroquia" labelPlacement="floating" [(ngModel)]="nuevaParroquia" placeholder="Ej. CENTRO HISTORICO"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Dirección" labelPlacement="floating" [(ngModel)]="nuevaDireccion" placeholder="Ej. CALLE FLORES Y MEJIA"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Cantidad de JRV" labelPlacement="floating" type="number" [(ngModel)]="nuevoTotalJrvs"></ion-input>
+          </ion-item>
+
+          <div class="gps-field-box">
+            <small>Coordenadas: Lat {{ nuevoGpsLat | number:'1.4-4' }}, Lng {{ nuevoGpsLng | number:'1.4-4' }}</small>
+            <ion-button fill="outline" size="small" (click)="capturarGpsParaRecinto()">
+              <ion-icon slot="start" name="locate-outline"></ion-icon>
+              Actualizar GPS
+            </ion-button>
+          </div>
+
+          @if (errorModal()) {
+            <ion-note color="danger" class="error-msg-modal">{{ errorModal() }}</ion-note>
+          }
+
+          <ion-button expand="block" color="primary" [disabled]="guardando()" (click)="guardarRecinto()" class="btn-guardar-modal">
+            @if (guardando()) {
+              <ion-spinner name="crescent"></ion-spinner>
+            } @else {
+              Guardar Recinto
+            }
+          </ion-button>
+        </div>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
+
+  <!-- Modal Crear y Asignar Coordinador -->
+  <ion-modal [isOpen]="modalCoordAbierto()">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar class="cne-toolbar">
+          <ion-title>Asignar Coordinador de Recinto</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="cerrarModalCoordinador()">
+              <ion-icon name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <div class="form-modal-box">
+          <p class="recinto-destino-txt">Recinto: <strong>{{ recintoParaCoord()?.nombre }}</strong></p>
+
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Cédula de Identidad (10 dígitos)" labelPlacement="floating" [(ngModel)]="nuevoCoordCedula" maxlength="10"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Nombres" labelPlacement="floating" [(ngModel)]="nuevoCoordNombres"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Apellidos" labelPlacement="floating" [(ngModel)]="nuevoCoordApellidos"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Teléfono / Celular" labelPlacement="floating" [(ngModel)]="nuevoCoordTelefono" placeholder="0991234567"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Correo Electrónico" labelPlacement="floating" type="email" [(ngModel)]="nuevoCoordCorreo" placeholder="coordinador@correo.com"></ion-input>
+          </ion-item>
+
+          <p class="nota-clave-txt">Contraseña inicial por defecto: <strong>Ecuador2026</strong> (cambio obligatorio en primer ingreso).</p>
+
+          @if (errorModal()) {
+            <ion-note color="danger" class="error-msg-modal">{{ errorModal() }}</ion-note>
+          }
+
+          <ion-button expand="block" color="primary" [disabled]="guardando()" (click)="guardarCoordinador()" class="btn-guardar-modal">
+            @if (guardando()) {
+              <ion-spinner name="crescent"></ion-spinner>
+            } @else {
+              Registrar y Asignar Coordinador
+            }
+          </ion-button>
+        </div>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
 </ion-content>

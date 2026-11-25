@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import {
   IonBadge,
   IonButton,
+  IonButtons,
   IonCard,
   IonCardContent,
   IonCardHeader,
@@ -12,6 +13,10 @@ import {
   IonContent,
   IonHeader,
   IonIcon,
+  IonInput,
+  IonItem,
+  IonModal,
+  IonNote,
   IonRefresher,
   IonRefresherContent,
   IonSearchbar,
@@ -23,17 +28,24 @@ import {
 import {
   Unsubscribe,
   collection,
+  doc,
   onSnapshot,
   query,
+  setDoc,
+  updateDoc,
   where,
 } from 'firebase/firestore';
 import { addIcons } from 'ionicons';
 import {
+  addCircleOutline,
   businessOutline,
   checkmarkCircleOutline,
+  closeOutline,
   documentTextOutline,
+  locateOutline,
   locationOutline,
   peopleOutline,
+  personAddOutline,
 } from 'ionicons/icons';
 
 import { firestoreDb } from '../../core/config/backend-clients';
@@ -43,7 +55,10 @@ import {
   RecintoElectoral,
 } from '../../core/models/electoral.models';
 import { ActasService } from '../../core/services/actas';
+import { GeoService } from '../../core/services/geo';
+import { UsuariosService } from '../../core/services/usuarios';
 import { SessionStore } from '../../core/state/session.store';
+import { validarCedulaEcuador } from '../../core/validators/cedula';
 import { ActaVisorModalComponent } from '../../shared/components/acta-visor-modal/acta-visor-modal.component';
 import { UiStateBannerComponent } from '../../shared/components/ui-state-banner/ui-state-banner.component';
 
@@ -63,6 +78,7 @@ interface RecintoConMetricas extends RecintoElectoral {
     IonHeader,
     IonToolbar,
     IonTitle,
+    IonButtons,
     IonContent,
     IonRefresher,
     IonRefresherContent,
@@ -76,6 +92,10 @@ interface RecintoConMetricas extends RecintoElectoral {
     IonButton,
     IonIcon,
     IonSpinner,
+    IonModal,
+    IonItem,
+    IonInput,
+    IonNote,
     UiStateBannerComponent,
   ],
   templateUrl: './recintos.page.html',
@@ -85,11 +105,36 @@ export class RecintosPage implements OnInit, OnDestroy {
   private readonly sessionStore = inject(SessionStore);
   private readonly actasService = inject(ActasService);
   private readonly modalCtrl = inject(ModalController);
+  private readonly geoService = inject(GeoService);
+  private readonly usuariosService = inject(UsuariosService);
 
   readonly perfil = this.sessionStore.perfil;
   readonly recintos = signal<RecintoElectoral[]>([]);
   readonly mesas = signal<JrvMesa[]>([]);
   readonly cargando = signal<boolean>(true);
+
+  // Modales
+  readonly modalRecintoAbierto = signal<boolean>(false);
+  readonly modalCoordAbierto = signal<boolean>(false);
+  readonly guardando = signal<boolean>(false);
+  readonly errorModal = signal<string>('');
+  readonly recintoParaCoord = signal<RecintoElectoral | null>(null);
+
+  // Datos formulario nuevo recinto
+  nuevoNombreRecinto = '';
+  nuevoCanton = 'QUITO';
+  nuevaParroquia = '';
+  nuevaDireccion = '';
+  nuevoTotalJrvs = 2;
+  nuevoGpsLat = -0.1807;
+  nuevoGpsLng = -78.4842;
+
+  // Datos formulario nuevo coordinador
+  nuevoCoordCedula = '';
+  nuevoCoordNombres = '';
+  nuevoCoordApellidos = '';
+  nuevoCoordTelefono = '';
+  nuevoCoordCorreo = '';
 
   textoBusqueda = '';
 
@@ -146,6 +191,10 @@ export class RecintosPage implements OnInit, OnDestroy {
       documentTextOutline,
       locationOutline,
       peopleOutline,
+      addCircleOutline,
+      closeOutline,
+      locateOutline,
+      personAddOutline,
     });
   }
 
@@ -197,7 +246,7 @@ export class RecintosPage implements OnInit, OnDestroy {
       }
     );
 
-    this.desuscribirMesas = onSnapshot(collection(firestoreDb, 'jrv'), (snap) => {
+    this.desuscribirMesas = onSnapshot(collection(firestoreDb, 'jrvs'), (snap) => {
       const lista = snap.docs.map((d) => {
         const data = d.data() as JrvMesa;
         return { ...data, ID: data.ID || d.id };
@@ -206,6 +255,142 @@ export class RecintosPage implements OnInit, OnDestroy {
     });
 
     this.actasService.observarTodasLasActas();
+  }
+
+  abrirModalRecinto(): void {
+    this.errorModal.set('');
+    this.nuevoNombreRecinto = '';
+    this.nuevaParroquia = '';
+    this.nuevaDireccion = '';
+    this.nuevoTotalJrvs = 2;
+    this.modalRecintoAbierto.set(true);
+  }
+
+  cerrarModalRecinto(): void {
+    this.modalRecintoAbierto.set(false);
+  }
+
+  async capturarGpsParaRecinto(): Promise<void> {
+    try {
+      const pos = await this.geoService.obtenerUbicacionActual();
+      this.nuevoGpsLat = pos.lat;
+      this.nuevoGpsLng = pos.lng;
+    } catch (e) {
+      this.errorModal.set(e instanceof Error ? e.message : 'Error al obtener GPS');
+    }
+  }
+
+  async guardarRecinto(): Promise<void> {
+    this.errorModal.set('');
+    if (!this.nuevoNombreRecinto.trim() || !this.nuevaParroquia.trim()) {
+      this.errorModal.set('Completa el nombre y la parroquia del recinto.');
+      return;
+    }
+
+    this.guardando.set(true);
+    try {
+      const provinciaID = this.perfil()?.provinciaID || '17';
+      const numConsecutivo = this.recintos().length + 1;
+      const recintoID = `REC-${provinciaID}-${String(numConsecutivo).padStart(3, '0')}`;
+
+      const nuevo: RecintoElectoral = {
+        ID: recintoID,
+        provinciaID,
+        canton: this.nuevoCanton.trim().toUpperCase(),
+        parroquia: this.nuevaParroquia.trim().toUpperCase(),
+        nombre: this.nuevoNombreRecinto.trim().toUpperCase(),
+        direccion: this.nuevaDireccion.trim().toUpperCase() || 'DIRECCIÓN ELECTORAL ASIGNADA',
+        totalJRVS: Number(this.nuevoTotalJrvs) || 2,
+        coordenadas: {
+          lat: this.nuevoGpsLat,
+          lng: this.nuevoGpsLng,
+          precision: 10,
+        },
+      };
+
+      await setDoc(doc(firestoreDb, 'recintos', recintoID), nuevo);
+
+      // Crear mesas base para el nuevo recinto
+      const totalMesas = Number(this.nuevoTotalJrvs) || 2;
+      for (let i = 1; i <= totalMesas; i++) {
+        const genero = i % 2 === 1 ? 'M' : 'F';
+        const jrvID = `JRV-${provinciaID}-${String(numConsecutivo).padStart(3, '0')}-${String(i).padStart(2, '0')}${genero}`;
+        const nuevaJrv: JrvMesa = {
+          ID: jrvID,
+          recintoID,
+          nombreRecinto: nuevo.nombre,
+          numero: i,
+          genero,
+          electores: 350,
+          estado: 'Pendiente',
+        };
+        await setDoc(doc(firestoreDb, 'jrvs', jrvID), nuevaJrv);
+      }
+
+      this.cerrarModalRecinto();
+    } catch (err) {
+      this.errorModal.set(err instanceof Error ? err.message : 'Error al guardar recinto.');
+    } finally {
+      this.guardando.set(false);
+    }
+  }
+
+  abrirAsignarCoordinador(recinto: RecintoElectoral): void {
+    this.errorModal.set('');
+    this.recintoParaCoord.set(recinto);
+    this.nuevoCoordCedula = '';
+    this.nuevoCoordNombres = '';
+    this.nuevoCoordApellidos = '';
+    this.nuevoCoordTelefono = '';
+    this.nuevoCoordCorreo = '';
+    this.modalCoordAbierto.set(true);
+  }
+
+  cerrarModalCoordinador(): void {
+    this.modalCoordAbierto.set(false);
+  }
+
+  async guardarCoordinador(): Promise<void> {
+    this.errorModal.set('');
+    const recinto = this.recintoParaCoord();
+    if (!recinto) return;
+
+    if (!validarCedulaEcuador(this.nuevoCoordCedula.trim())) {
+      this.errorModal.set('La cédula ingresada no es válida según el registro civil.');
+      return;
+    }
+
+    if (!this.nuevoCoordNombres.trim() || !this.nuevoCoordApellidos.trim()) {
+      this.errorModal.set('Ingresa nombres y apellidos completos.');
+      return;
+    }
+
+    this.guardando.set(true);
+    try {
+      const nombreCompleto = `${this.nuevoCoordNombres.trim()} ${this.nuevoCoordApellidos.trim()}`;
+      const nuevoUsuario = await this.usuariosService.registrarUsuarioElectoral({
+        cedula: this.nuevoCoordCedula.trim(),
+        nombres: this.nuevoCoordNombres.trim(),
+        apellidos: this.nuevoCoordApellidos.trim(),
+        telefono: this.nuevoCoordTelefono.trim(),
+        correo: this.nuevoCoordCorreo.trim(),
+        rol: 'CoordRecinto',
+        provinciaID: recinto.provinciaID,
+        recintoID: recinto.ID,
+      });
+
+      // Vincular coordinador al documento de recinto
+      await updateDoc(doc(firestoreDb, 'recintos', recinto.ID), {
+        coordinadorRecintoUID: nuevoUsuario.uID,
+        coordinadorNombre: nombreCompleto,
+      });
+
+      this.cerrarModalCoordinador();
+    } catch (err) {
+      this.errorModal.set(err instanceof Error ? err.message : 'Error al crear coordinador.');
+    } finally {
+      this.guardando.set(false);
+    }
   }
 
   async abrirUltimaActaRecinto(recintoID: string): Promise<void> {

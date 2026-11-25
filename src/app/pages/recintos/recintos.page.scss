@@ -150,6 +150,92 @@ ion-card-subtitle {
   font-weight: 700;
 }
 
+.coord-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.85rem;
+
+  .coord-label {
+    color: #64748b;
+    font-size: 0.78rem;
+  }
+
+  .coord-nombre {
+    color: #0057b8;
+    font-weight: 700;
+  }
+
+  .sin-coord {
+    color: #d97706;
+    font-weight: 600;
+    font-size: 0.78rem;
+  }
+}
+
+.btn-nuevo-header {
+  --border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  height: 34px;
+}
+
+.form-modal-box {
+  max-width: 480px;
+  margin: 0 auto;
+
+  .item-form {
+    --background: #f8fafc;
+    --border-radius: 10px;
+    --color: #0f172a;
+    border: 1px solid #cbd5e1;
+    margin-bottom: 12px;
+
+    ion-input {
+      --color: #0f172a;
+      color: #0f172a;
+    }
+  }
+
+  .gps-field-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f1f5f9;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    font-size: 0.82rem;
+  }
+
+  .error-msg-modal {
+    display: block;
+    margin-bottom: 12px;
+    font-size: 0.84rem;
+    font-weight: 600;
+  }
+
+  .btn-guardar-modal {
+    --border-radius: 12px;
+    height: 46px;
+    font-weight: 700;
+  }
+
+  .recinto-destino-txt,
+  .nota-clave-txt {
+    font-size: 0.85rem;
+    color: #475569;
+    margin: 4px 0 12px;
+  }
+}
+
 .cargando-box {
   text-align: center;
   padding: 28px 16px;

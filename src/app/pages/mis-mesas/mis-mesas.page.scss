@@ -86,15 +86,35 @@
   }
 }
 
+.seccion-dignidad-acta {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+
+  .dignidad-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+
+    strong {
+      color: #0f172a;
+      font-size: 0.95rem;
+    }
+  }
+}
+
 .resumen-acta {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   background: #f8fafc;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 10px;
+  border-radius: 10px;
   border: 1px solid #e2e8f0;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
   text-align: center;
 
   .metrica {

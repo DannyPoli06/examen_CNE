@@ -12,6 +12,7 @@ import {
   IonCardHeader,
   IonCardSubtitle,
   IonCardTitle,
+  IonCheckbox,
   IonContent,
   IonHeader,
   IonIcon,
@@ -20,6 +21,8 @@ import {
   IonLabel,
   IonList,
   IonNote,
+  IonSegment,
+  IonSegmentButton,
   IonSpinner,
   IonTextarea,
   IonTitle,
@@ -40,6 +43,7 @@ import {
 import { firestoreDb } from '../../core/config/backend-clients';
 import {
   ActaElectoral,
+  DignidadElectoral,
   JrvMesa,
   ListaCandidato,
   UbicacionGps,
@@ -76,6 +80,8 @@ interface FilaVotoLista {
     IonBackButton,
     IonTitle,
     IonContent,
+    IonSegment,
+    IonSegmentButton,
     IonCard,
     IonCardHeader,
     IonCardTitle,
@@ -89,6 +95,7 @@ interface FilaVotoLista {
     IonButton,
     IonIcon,
     IonBadge,
+    IonCheckbox,
     IonNote,
     IonSpinner,
     GpsBadgeComponent,
@@ -115,6 +122,10 @@ export class RegistrarActaPage implements OnInit {
   readonly jrv = signal<JrvMesa | null>(null);
   readonly actaPrevia = signal<ActaElectoral | null>(null);
   readonly filasListas = signal<FilaVotoLista[]>([]);
+  readonly catalogoTotal = signal<ListaCandidato[]>([]);
+
+  readonly dignidad = signal<DignidadElectoral>('Alcalde');
+  readonly nitidezConfirmada = signal<boolean>(false);
 
   votosBlancos = 0;
   votosNulos = 0;
@@ -158,37 +169,14 @@ export class RegistrarActaPage implements OnInit {
 
       this.jrv.set(mesa);
 
-      const [listasSnap, actaExistente] = await Promise.all([
-        getDocs(collection(firestoreDb, 'listas')),
-        this.actasService.obtenerActaPorId(`ACTA-${jrvID}`),
-      ]);
-
-      const listas: ListaCandidato[] = listasSnap.docs
+      const listasSnap = await getDocs(collection(firestoreDb, 'listas'));
+      const todasListas: ListaCandidato[] = listasSnap.docs
         .map((d) => d.data() as ListaCandidato)
         .sort((a, b) => a.listaPerteneciente.localeCompare(b.listaPerteneciente));
 
-      if (actaExistente) {
-        this.actaPrevia.set(actaExistente);
-        this.votosBlancos = actaExistente.votosBlancos;
-        this.votosNulos = actaExistente.votosNulos;
-        this.totalSufragantes = actaExistente.totalSufragantes;
-        this.gpsActual.set(actaExistente.gps);
-        this.fotoUrlExistente.set(actaExistente.fotoUrl);
-      }
+      this.catalogoTotal.set(todasListas);
 
-      const filas: FilaVotoLista[] = listas.map((l) => {
-        const previo = actaExistente?.votosPorLista.find((v) => v.listaID === l.ID);
-        return {
-          listaID: l.ID,
-          listaPerteneciente: l.listaPerteneciente,
-          siglas: l.siglas,
-          nombrePartido: l.nombrePartido,
-          candidato: l.candidato,
-          votos: previo ? previo.votos : 0,
-        };
-      });
-
-      this.filasListas.set(filas);
+      await this.cargarActaPorDignidad(this.dignidad());
 
       if (!this.gpsActual()) {
         await this.obtenerGps();
@@ -200,6 +188,62 @@ export class RegistrarActaPage implements OnInit {
     } finally {
       this.cargandoInicial.set(false);
     }
+  }
+
+  async cambiarDignidad(nuevaDignidad: DignidadElectoral): Promise<void> {
+    if (this.dignidad() === nuevaDignidad) return;
+    this.dignidad.set(nuevaDignidad);
+    this.cargandoInicial.set(true);
+    try {
+      await this.cargarActaPorDignidad(nuevaDignidad);
+    } finally {
+      this.cargandoInicial.set(false);
+    }
+  }
+
+  private async cargarActaPorDignidad(dignidad: DignidadElectoral): Promise<void> {
+    const mesa = this.jrv();
+    if (!mesa) return;
+
+    const listas = this.catalogoTotal().filter(
+      (l) => !l.dignidad || l.dignidad === dignidad
+    );
+
+    const actaID = `ACTA-${mesa.ID}-${dignidad}`;
+    const actaExistente = await this.actasService.obtenerActaPorId(actaID);
+
+    if (actaExistente) {
+      this.actaPrevia.set(actaExistente);
+      this.votosBlancos = actaExistente.votosBlancos;
+      this.votosNulos = actaExistente.votosNulos;
+      this.totalSufragantes = actaExistente.totalSufragantes;
+      this.gpsActual.set(actaExistente.gps);
+      this.fotoUrlExistente.set(actaExistente.fotoUrl);
+      this.fotoDataUrl.set('');
+      this.nitidezConfirmada.set(true);
+    } else {
+      this.actaPrevia.set(null);
+      this.votosBlancos = 0;
+      this.votosNulos = 0;
+      this.totalSufragantes = 0;
+      this.fotoDataUrl.set('');
+      this.fotoUrlExistente.set('');
+      this.nitidezConfirmada.set(false);
+    }
+
+    const filas: FilaVotoLista[] = listas.map((l) => {
+      const previo = actaExistente?.votosPorLista.find((v) => v.listaID === l.ID);
+      return {
+        listaID: l.ID,
+        listaPerteneciente: l.listaPerteneciente,
+        siglas: l.siglas,
+        nombrePartido: l.nombrePartido,
+        candidato: l.candidato,
+        votos: previo ? previo.votos : 0,
+      };
+    });
+
+    this.filasListas.set(filas);
   }
 
   actualizarVotoLista(listaID: string, valor: unknown): void {
@@ -249,6 +293,7 @@ export class RegistrarActaPage implements OnInit {
       const foto = await this.camaraService.capturarFotoActa(usarGaleria);
       this.fotoDataUrl.set(foto.dataUrl);
       this.fotoUrlExistente.set('');
+      this.nitidezConfirmada.set(false);
     } catch (error) {
       this.errorMensaje.set(
         error instanceof Error ? error.message : 'No se pudo capturar la imagen.'
@@ -279,6 +324,13 @@ export class RegistrarActaPage implements OnInit {
       return;
     }
 
+    if (!this.nitidezConfirmada()) {
+      this.errorMensaje.set(
+        'Debes verificar y confirmar que la fotografía es nítida y legible antes de transmitir.'
+      );
+      return;
+    }
+
     if ((Number(this.totalSufragantes) || 0) <= 0) {
       this.errorMensaje.set('Ingresa el total de sufragantes que consta en el acta.');
       return;
@@ -296,6 +348,7 @@ export class RegistrarActaPage implements OnInit {
       await this.syncOfflineService.enviarOEncolarActa({
         jrv: mesa,
         veedor,
+        dignidad: this.dignidad(),
         votosPorLista,
         votosBlancos: Math.max(0, Math.floor(Number(this.votosBlancos) || 0)),
         votosNulos: Math.max(0, Math.floor(Number(this.votosNulos) || 0)),

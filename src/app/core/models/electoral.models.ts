@@ -1,7 +1,7 @@
-// Tipos base de estado y perfiles del sistema electoral
 export type RolSistema = 'CoordProvincial' | 'CoordRecinto' | 'Veedor';
 export type EstadoMesa = 'Pendiente' | 'Registrada' | 'Observada';
 export type EstadoRegistroActa = 'Validada' | 'Observada';
+export type DignidadElectoral = 'Alcalde' | 'Prefecto';
 
 export interface UbicacionGps {
   lat: number;
@@ -9,7 +9,6 @@ export interface UbicacionGps {
   precision?: number;
 }
 
-// 1. Recintos y Juntas Receptoras del Voto (JRV)
 export interface RecintoElectoral {
   ID: string;
   provinciaID: string;
@@ -19,6 +18,7 @@ export interface RecintoElectoral {
   direccion: string;
   totalJRVS: number;
   coordinadorRecintoUID?: string;
+  coordinadorNombre?: string;
   coordenadas?: UbicacionGps;
 }
 
@@ -35,9 +35,9 @@ export interface JrvMesa {
   actaID?: string;
 }
 
-// 2. Listas / Candidatos y Actas de Escrutinio
 export interface ListaCandidato {
   ID: string;
+  dignidad: DignidadElectoral;
   listaPerteneciente: string;
   siglas: string;
   nombrePartido: string;
@@ -53,6 +53,7 @@ export interface VotoPorLista {
 
 export interface ActaElectoral {
   ID?: string;
+  dignidad: DignidadElectoral;
   recintoID: string;
   nombreRecinto: string;
   jrvID: string;
@@ -73,12 +74,13 @@ export interface ActaElectoral {
   creadaEn: string;
 }
 
-// 3. Usuarios del sistema
 export interface UsuarioPerfil {
   uID: string;
   cedula: string;
   correo: string;
   nombres: string;
+  apellidos?: string;
+  telefono?: string;
   rol: RolSistema;
   provinciaID: string;
   recintoID?: string;

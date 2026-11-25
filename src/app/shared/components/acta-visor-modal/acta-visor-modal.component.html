@@ -46,7 +46,15 @@
 
     <ion-card class="card-visor">
       <ion-card-header>
-        <ion-card-title>Escrutinio Registrado</ion-card-title>
+        <div class="row-header-escrutinio">
+          <ion-card-title>Escrutinio Registrado</ion-card-title>
+          @if (puedeValidar) {
+            <ion-button fill="outline" size="small" (click)="alternarModoEdicion()">
+              <ion-icon slot="start" [name]="modoEdicion() ? 'close-outline' : 'create-outline'"></ion-icon>
+              {{ modoEdicion() ? 'Cancelar Edición' : 'Corregir Datos' }}
+            </ion-button>
+          }
+        </div>
       </ion-card-header>
       <ion-card-content class="ion-no-padding">
         <ion-list lines="full">
@@ -55,20 +63,50 @@
               <ion-label>
                 <h3>Lista {{ item.listaPerteneciente }} • {{ item.siglas }}</h3>
               </ion-label>
-              <ion-badge slot="end" color="primary" class="badge-voto">
-                {{ item.votos }}
-              </ion-badge>
+              @if (modoEdicion()) {
+                <ion-input
+                  slot="end"
+                  type="number"
+                  min="0"
+                  class="input-edicion-voto"
+                  [(ngModel)]="votosEditados[item.listaID]"
+                ></ion-input>
+              } @else {
+                <ion-badge slot="end" color="primary" class="badge-voto">
+                  {{ item.votos }}
+                </ion-badge>
+              }
             </ion-item>
           }
 
           <ion-item>
             <ion-label>Votos Blancos</ion-label>
-            <strong slot="end">{{ acta.votosBlancos }}</strong>
+            @if (modoEdicion()) {
+              <ion-input
+                slot="end"
+                type="number"
+                min="0"
+                class="input-edicion-voto"
+                [(ngModel)]="editVotosBlancos"
+              ></ion-input>
+            } @else {
+              <strong slot="end">{{ acta.votosBlancos }}</strong>
+            }
           </ion-item>
 
           <ion-item>
             <ion-label>Votos Nulos</ion-label>
-            <strong slot="end">{{ acta.votosNulos }}</strong>
+            @if (modoEdicion()) {
+              <ion-input
+                slot="end"
+                type="number"
+                min="0"
+                class="input-edicion-voto"
+                [(ngModel)]="editVotosNulos"
+              ></ion-input>
+            } @else {
+              <strong slot="end">{{ acta.votosNulos }}</strong>
+            }
           </ion-item>
 
           <ion-item>
@@ -78,9 +116,28 @@
 
           <ion-item lines="none">
             <ion-label>Total Sufragantes</ion-label>
-            <strong slot="end" color="primary">{{ acta.totalSufragantes }}</strong>
+            @if (modoEdicion()) {
+              <ion-input
+                slot="end"
+                type="number"
+                min="0"
+                class="input-edicion-voto"
+                [(ngModel)]="editSufragantes"
+              ></ion-input>
+            } @else {
+              <strong slot="end" color="primary">{{ acta.totalSufragantes }}</strong>
+            }
           </ion-item>
         </ion-list>
+
+        @if (modoEdicion()) {
+          <div class="box-guardar-edicion">
+            <ion-button expand="block" color="warning" [disabled]="guardando()" (click)="guardarCorrecciones()">
+              <ion-icon slot="start" name="save-outline"></ion-icon>
+              Guardar Corrección de Datos
+            </ion-button>
+          </div>
+        }
       </ion-card-content>
     </ion-card>
 

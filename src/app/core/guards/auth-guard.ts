@@ -5,21 +5,21 @@ import { AuthService } from '../services/autenticacion';
 
 function rutaDestinoPorRol(router: Router, perfil: UsuarioPerfil): UrlTree {
   if (perfil.primeraVezAcceso) {
-    return router.createUrlTree(['/cambiar-clave']);
+    return router.createUrlTree(['/login']);
   }
 
   switch (perfil.rol) {
     case 'CoordProvincial':
-      return router.createUrlTree(['/provincial']);
+      return router.createUrlTree(['/tabs/dashboard']);
     case 'CoordRecinto':
-      return router.createUrlTree(['/recinto']);
+      return router.createUrlTree(['/tabs/mesas']);
     case 'Veedor':
     default:
-      return router.createUrlTree(['/veedor']);
+      return router.createUrlTree(['/tabs/mis-mesas']);
   }
 }
 
-export const guardAutenticado: CanActivateFn = async (_route, state) => {
+export const guardAutenticado: CanActivateFn = async (_route, _state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
@@ -29,14 +29,8 @@ export const guardAutenticado: CanActivateFn = async (_route, state) => {
     return router.createUrlTree(['/login']);
   }
 
-  // Si es su primer ingreso, solo puede estar en /cambiar-clave
-  if (perfil.primeraVezAcceso && state.url !== '/cambiar-clave') {
-    return router.createUrlTree(['/cambiar-clave']);
-  }
-
-  // Si ya cambió su clave, no debe volver a entrar a /cambiar-clave
-  if (!perfil.primeraVezAcceso && state.url === '/cambiar-clave') {
-    return rutaDestinoPorRol(router, perfil);
+  if (perfil.primeraVezAcceso) {
+    return router.createUrlTree(['/login']);
   }
 
   return true;
@@ -54,7 +48,7 @@ export function guardRolPermitido(rolesPermitidos: RolSistema[]): CanActivateFn 
     }
 
     if (perfil.primeraVezAcceso) {
-      return router.createUrlTree(['/cambiar-clave']);
+      return router.createUrlTree(['/login']);
     }
 
     if (!rolesPermitidos.includes(perfil.rol)) {

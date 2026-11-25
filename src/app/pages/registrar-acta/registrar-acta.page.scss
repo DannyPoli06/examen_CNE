@@ -64,6 +64,9 @@
   font-weight: 700;
   background: #f1f5f9;
   border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  --color: #0f172a;
+  color: #0f172a;
   --padding-start: 8px;
   --padding-end: 10px;
 }
@@ -78,6 +81,13 @@
 .campo-num {
   --border-radius: 12px;
   --background: #f8fafc;
+  --color: #0f172a;
+  border: 1px solid #cbd5e1;
+
+  ion-input {
+    --color: #0f172a;
+    color: #0f172a;
+  }
 }
 
 .sufragantes-item {
@@ -147,9 +157,48 @@
   }
 }
 
+.segmento-dignidad {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 12px;
+  border: 1px solid #cbd5e1;
+  --color: #475569;
+  --color-checked: #ffffff;
+  --indicator-color: #0057b8;
+
+  ion-segment-button {
+    font-weight: 700;
+    min-height: 38px;
+    font-size: 0.88rem;
+  }
+}
+
+.comprobacion-nitidez-box {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+
+  .item-nitidez {
+    --background: transparent;
+    --padding-start: 0;
+    --inner-padding-end: 0;
+
+    .texto-nitidez {
+      font-size: 0.84rem;
+      color: #1e3a8a;
+      line-height: 1.35;
+    }
+  }
+}
+
 .campo-obs {
   --border-radius: 12px;
   --background: #f8fafc;
+  --color: #0f172a;
+  border: 1px solid #cbd5e1;
 }
 
 .error-texto {

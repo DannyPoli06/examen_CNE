@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  IonBadge,
   IonCard,
   IonCardContent,
   IonCardHeader,
@@ -10,12 +9,14 @@ import {
   IonCardTitle,
   IonContent,
   IonHeader,
-  IonIcon,
+  IonItem,
   IonProgressBar,
   IonRefresher,
   IonRefresherContent,
   IonSegment,
   IonSegmentButton,
+  IonSelect,
+  IonSelectOption,
   IonSpinner,
   IonTitle,
   IonToolbar,
@@ -39,8 +40,10 @@ import {
 
 import { firestoreDb } from '../../core/config/backend-clients';
 import {
+  DignidadElectoral,
   JrvMesa,
   ListaCandidato,
+  RecintoElectoral,
 } from '../../core/models/electoral.models';
 import { ActasService } from '../../core/services/actas';
 import { SessionStore } from '../../core/state/session.store';
@@ -70,13 +73,14 @@ interface ResultadoLista {
     IonRefresherContent,
     IonSegment,
     IonSegmentButton,
+    IonItem,
+    IonSelect,
+    IonSelectOption,
     IonCard,
     IonCardHeader,
     IonCardTitle,
     IonCardSubtitle,
     IonCardContent,
-    IonBadge,
-    IonIcon,
     IonProgressBar,
     IonSpinner,
     UiStateBannerComponent,
@@ -92,10 +96,13 @@ export class DashboardPage implements OnInit, OnDestroy {
   readonly recinto = this.sessionStore.recintoAsignado;
 
   readonly listasCatalogo = signal<ListaCandidato[]>([]);
+  readonly recintosLista = signal<RecintoElectoral[]>([]);
   readonly totalJrvAmbito = signal<number>(0);
   readonly cargando = signal<boolean>(true);
 
   modoConteo: 'todas' | 'validadas' = 'todas';
+  dignidadSeleccionada: DignidadElectoral = 'Alcalde';
+  recintoFiltro = 'todos';
 
   private desuscribirJrv?: Unsubscribe;
 
@@ -107,11 +114,22 @@ export class DashboardPage implements OnInit, OnDestroy {
     if (this.esCoordinadorRecinto()) {
       return this.recinto()?.nombre || 'Recinto Electoral';
     }
-    return `Provincia ${this.perfil()?.provinciaID || 'PICHINCHA'}`;
+    if (this.recintoFiltro !== 'todos') {
+      const match = this.recintosLista().find((r) => r.ID === this.recintoFiltro);
+      return match ? match.nombre : `Provincia ${this.perfil()?.provinciaID || 'PICHINCHA'}`;
+    }
+    return `Provincia ${this.perfil()?.provinciaID || 'PICHINCHA'} (Consolidado)`;
   });
 
   readonly actasFiltradas = computed(() => {
-    const todas = this.actasService.actas();
+    let todas = this.actasService.actas();
+
+    if (this.recintoFiltro !== 'todos') {
+      todas = todas.filter((a) => a.recintoID === this.recintoFiltro);
+    }
+
+    todas = todas.filter((a) => !a.dignidad || a.dignidad === this.dignidadSeleccionada);
+
     if (this.modoConteo === 'validadas') {
       return todas.filter((a) => a.estado === 'Validada');
     }
@@ -119,7 +137,16 @@ export class DashboardPage implements OnInit, OnDestroy {
   });
 
   readonly metricasGenerales = computed(() => {
-    const todasActas = this.actasService.actas();
+    let todasActas = this.actasService.actas();
+
+    if (this.recintoFiltro !== 'todos') {
+      todasActas = todasActas.filter((a) => a.recintoID === this.recintoFiltro);
+    }
+
+    todasActas = todasActas.filter(
+      (a) => !a.dignidad || a.dignidad === this.dignidadSeleccionada
+    );
+
     const actasConteo = this.actasFiltradas();
     const totalJrv = this.totalJrvAmbito();
 
@@ -150,7 +177,9 @@ export class DashboardPage implements OnInit, OnDestroy {
 
   readonly resultadosPorLista = computed<ResultadoLista[]>(() => {
     const actasConteo = this.actasFiltradas();
-    const catalogo = this.listasCatalogo();
+    const catalogo = this.listasCatalogo().filter(
+      (l) => !l.dignidad || l.dignidad === this.dignidadSeleccionada
+    );
     const acumulado = new Map<string, number>();
 
     for (const acta of actasConteo) {
@@ -213,13 +242,22 @@ export class DashboardPage implements OnInit, OnDestroy {
   async cargarDashboard(): Promise<void> {
     this.cargando.set(true);
     try {
-      const listasSnap = await getDocs(collection(firestoreDb, 'listas'));
+      const [listasSnap, recintosSnap] = await Promise.all([
+        getDocs(collection(firestoreDb, 'listas')),
+        getDocs(collection(firestoreDb, 'recintos')),
+      ]);
+
       const listas = listasSnap.docs
         .map((d) => d.data() as ListaCandidato)
         .sort((a, b) =>
           a.listaPerteneciente.localeCompare(b.listaPerteneciente)
         );
       this.listasCatalogo.set(listas);
+
+      const recintos = recintosSnap.docs
+        .map((d) => d.data() as RecintoElectoral)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre));
+      this.recintosLista.set(recintos);
 
       const usuario = this.perfil();
       const recintoID = this.recinto()?.ID || usuario?.recintoID;
@@ -229,7 +267,7 @@ export class DashboardPage implements OnInit, OnDestroy {
       if (usuario?.rol === 'CoordRecinto' && recintoID) {
         this.actasService.observarActasPorRecinto(recintoID);
         const consultaJrv = query(
-          collection(firestoreDb, 'jrv'),
+          collection(firestoreDb, 'jrvs'),
           where('recintoID', '==', recintoID)
         );
         this.desuscribirJrv = onSnapshot(consultaJrv, (snap) => {
@@ -238,7 +276,7 @@ export class DashboardPage implements OnInit, OnDestroy {
       } else {
         this.actasService.observarTodasLasActas();
         this.desuscribirJrv = onSnapshot(
-          collection(firestoreDb, 'jrv'),
+          collection(firestoreDb, 'jrvs'),
           (snap) => {
             const items = snap.docs.map((d) => d.data() as JrvMesa);
             this.totalJrvAmbito.set(items.length);

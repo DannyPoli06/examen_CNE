@@ -16,27 +16,34 @@ import {
   IonItem,
   IonLabel,
   IonList,
-  IonModal,
   IonNote,
   IonSpinner,
   IonTitle,
   IonToolbar,
   ModalController,
 } from '@ionic/angular';
+import { doc, updateDoc } from 'firebase/firestore';
 import { addIcons } from 'ionicons';
 import {
   alertCircleOutline,
   checkmarkCircleOutline,
   closeOutline,
+  createOutline,
   documentTextOutline,
   personOutline,
+  saveOutline,
 } from 'ionicons/icons';
 
+import { firestoreDb } from '../../../core/config/backend-clients';
 import {
   ActaElectoral,
+  EstadoMesa,
   EstadoRegistroActa,
+  VotoPorLista,
 } from '../../../core/models/electoral.models';
 import { ActasService } from '../../../core/services/actas';
+import { JrvService } from '../../../core/services/jrv';
+import { evaluarCuadreActa } from '../../../core/validators/acta';
 import { GpsBadgeComponent } from '../gps-badge/gps-badge.component';
 
 @Component({
@@ -71,6 +78,7 @@ import { GpsBadgeComponent } from '../gps-badge/gps-badge.component';
 export class ActaVisorModalComponent implements OnInit {
   private readonly modalCtrl = inject(ModalController);
   private readonly actasService = inject(ActasService);
+  private readonly jrvService = inject(JrvService);
 
   @Input({ required: true }) acta!: ActaElectoral;
   @Input() puedeValidar = true;
@@ -79,6 +87,13 @@ export class ActaVisorModalComponent implements OnInit {
   readonly guardando = signal<boolean>(false);
   readonly errorMensaje = signal<string>('');
 
+  // Modo edicion para coordinadores
+  readonly modoEdicion = signal<boolean>(false);
+  editVotosBlancos = 0;
+  editVotosNulos = 0;
+  editSufragantes = 0;
+  votosEditados: { [listaID: string]: number } = {};
+
   constructor() {
     addIcons({
       closeOutline,
@@ -86,11 +101,85 @@ export class ActaVisorModalComponent implements OnInit {
       alertCircleOutline,
       documentTextOutline,
       personOutline,
+      createOutline,
+      saveOutline,
     });
   }
 
   ngOnInit(): void {
     this.observacion = this.acta?.observacion ?? '';
+    this.cargarDatosEdicion();
+  }
+
+  private cargarDatosEdicion(): void {
+    if (!this.acta) return;
+    this.editVotosBlancos = this.acta.votosBlancos;
+    this.editVotosNulos = this.acta.votosNulos;
+    this.editSufragantes = this.acta.totalSufragantes;
+    this.votosEditados = {};
+    for (const v of this.acta.votosPorLista || []) {
+      this.votosEditados[v.listaID] = v.votos;
+    }
+  }
+
+  alternarModoEdicion(): void {
+    this.errorMensaje.set('');
+    if (!this.modoEdicion()) {
+      this.cargarDatosEdicion();
+      this.modoEdicion.set(true);
+    } else {
+      this.modoEdicion.set(false);
+    }
+  }
+
+  async guardarCorrecciones(): Promise<void> {
+    if (!this.acta.ID) return;
+    this.errorMensaje.set('');
+    this.guardando.set(true);
+
+    try {
+      const mesa = await this.jrvService.obtenerJrvPorId(this.acta.jrvID);
+      const electores = mesa?.electores || 350;
+
+      const votosPorListaActualizados: VotoPorLista[] = (this.acta.votosPorLista || []).map((item) => ({
+        ...item,
+        votos: Math.max(0, Math.floor(Number(this.votosEditados[item.listaID]) || 0)),
+      }));
+
+      const cuadre = evaluarCuadreActa({
+        votosPorLista: votosPorListaActualizados,
+        votosBlancos: Math.max(0, Math.floor(Number(this.editVotosBlancos) || 0)),
+        votosNulos: Math.max(0, Math.floor(Number(this.editVotosNulos) || 0)),
+        totalSufragantes: Math.max(0, Math.floor(Number(this.editSufragantes) || 0)),
+        electoresHabilitadosJrv: electores,
+      });
+
+      const cambios: Partial<ActaElectoral> = {
+        votosPorLista: votosPorListaActualizados,
+        votosBlancos: Math.max(0, Math.floor(Number(this.editVotosBlancos) || 0)),
+        votosNulos: Math.max(0, Math.floor(Number(this.editVotosNulos) || 0)),
+        totalSufragantes: Math.max(0, Math.floor(Number(this.editSufragantes) || 0)),
+        totalCalculado: cuadre.totalCalculado,
+        estado: cuadre.estadoSugerido,
+        observacion: cuadre.observacion || this.observacion.trim(),
+      };
+
+      await updateDoc(doc(firestoreDb, 'actas', this.acta.ID), cambios);
+
+      const nuevoEstadoJrv: EstadoMesa = cuadre.estadoSugerido === 'Validada' ? 'Registrada' : 'Observada';
+      await this.jrvService.actualizarEstadoJrv(this.acta.jrvID, nuevoEstadoJrv, this.acta.ID);
+
+      this.acta = {
+        ...this.acta,
+        ...cambios,
+      };
+
+      this.modoEdicion.set(false);
+    } catch (err) {
+      this.errorMensaje.set(err instanceof Error ? err.message : 'Error al guardar correcciones.');
+    } finally {
+      this.guardando.set(false);
+    }
   }
 
   async cerrar(actualizada = false): Promise<void> {

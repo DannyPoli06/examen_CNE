@@ -29,6 +29,33 @@
   <div class="contenedor-dashboard">
     <app-ui-state-banner></app-ui-state-banner>
 
+    <ion-segment [(ngModel)]="dignidadSeleccionada" class="segmento-dignidad">
+      <ion-segment-button value="Alcalde">
+        Alcaldía
+      </ion-segment-button>
+      <ion-segment-button value="Prefecto">
+        Prefectura
+      </ion-segment-button>
+    </ion-segment>
+
+    @if (!esCoordinadorRecinto() && recintosLista().length > 0) {
+      <div class="filtro-recinto-box">
+        <ion-item lines="none" class="item-select-recinto">
+          <ion-select
+            label="Ámbito de visualización"
+            labelPlacement="floating"
+            [(ngModel)]="recintoFiltro"
+            interface="popover"
+          >
+            <ion-select-option value="todos">Toda la Provincia (Consolidado)</ion-select-option>
+            @for (rec of recintosLista(); track rec.ID) {
+              <ion-select-option [value]="rec.ID">{{ rec.nombre }}</ion-select-option>
+            }
+          </ion-select>
+        </ion-item>
+      </div>
+    }
+
     <ion-segment [(ngModel)]="modoConteo" class="segmento-filtro">
       <ion-segment-button value="todas">
         Todas ({{ metricasGenerales().ingresadas }})

@@ -33,64 +33,98 @@
         <ion-card-header>
           <div class="card-top-row">
             <span class="jrv-codigo">{{ mesa.ID }}</span>
-            <ion-badge [color]="estadoVisual().color">
-              {{ estadoVisual().texto }}
-            </ion-badge>
+            <ion-badge color="primary">Padrón: {{ mesa.electores }} electores</ion-badge>
           </div>
           <ion-card-title>
             Junta Receptora N.° {{ mesa.numero }} ({{ mesa.genero }})
           </ion-card-title>
           <ion-card-subtitle>
             <ion-icon name="people-outline"></ion-icon>
-            Padrón de mesa: <strong>{{ mesa.electores }} electores</strong>
+            {{ mesa.nombreRecinto }}
           </ion-card-subtitle>
         </ion-card-header>
 
         <ion-card-content>
-          @if (actaActual(); as acta) {
-            <div class="resumen-acta">
-              <div class="metrica">
-                <span>Sufragantes</span>
-                <strong>{{ acta.totalSufragantes }}</strong>
-              </div>
-              <div class="metrica">
-                <span>Blancos</span>
-                <strong>{{ acta.votosBlancos }}</strong>
-              </div>
-              <div class="metrica">
-                <span>Nulos</span>
-                <strong>{{ acta.votosNulos }}</strong>
-              </div>
+          <!-- 1. Estado Acta Alcaldia -->
+          <div class="seccion-dignidad-acta">
+            <div class="dignidad-header-row">
+              <strong>Acta de Alcaldía</strong>
+              <ion-badge [color]="estadoVisualDignidad(actaAlcalde()).color">
+                {{ estadoVisualDignidad(actaAlcalde()).texto }}
+              </ion-badge>
             </div>
 
-            @if (acta.observacion) {
-              <div class="alerta-observacion">
-                <ion-icon name="alert-circle-outline"></ion-icon>
-                <div>
-                  <strong>Observación del Coordinador:</strong>
-                  <p>{{ acta.observacion }}</p>
+            @if (actaAlcalde(); as actAlc) {
+              <div class="resumen-acta">
+                <div class="metrica">
+                  <span>Sufragantes</span>
+                  <strong>{{ actAlc.totalSufragantes }}</strong>
+                </div>
+                <div class="metrica">
+                  <span>Blancos</span>
+                  <strong>{{ actAlc.votosBlancos }}</strong>
+                </div>
+                <div class="metrica">
+                  <span>Nulos</span>
+                  <strong>{{ actAlc.votosNulos }}</strong>
                 </div>
               </div>
+              @if (actAlc.observacion) {
+                <div class="alerta-observacion">
+                  <ion-icon name="alert-circle-outline"></ion-icon>
+                  <div>
+                    <strong>Observación:</strong>
+                    <p>{{ actAlc.observacion }}</p>
+                  </div>
+                </div>
+              }
             }
-          }
+          </div>
+
+          <!-- 2. Estado Acta Prefectura -->
+          <div class="seccion-dignidad-acta">
+            <div class="dignidad-header-row">
+              <strong>Acta de Prefectura</strong>
+              <ion-badge [color]="estadoVisualDignidad(actaPrefecto()).color">
+                {{ estadoVisualDignidad(actaPrefecto()).texto }}
+              </ion-badge>
+            </div>
+
+            @if (actaPrefecto(); as actPref) {
+              <div class="resumen-acta">
+                <div class="metrica">
+                  <span>Sufragantes</span>
+                  <strong>{{ actPref.totalSufragantes }}</strong>
+                </div>
+                <div class="metrica">
+                  <span>Blancos</span>
+                  <strong>{{ actPref.votosBlancos }}</strong>
+                </div>
+                <div class="metrica">
+                  <span>Nulos</span>
+                  <strong>{{ actPref.votosNulos }}</strong>
+                </div>
+              </div>
+              @if (actPref.observacion) {
+                <div class="alerta-observacion">
+                  <ion-icon name="alert-circle-outline"></ion-icon>
+                  <div>
+                    <strong>Observación:</strong>
+                    <p>{{ actPref.observacion }}</p>
+                  </div>
+                </div>
+              }
+            }
+          </div>
 
           <ion-button
             expand="block"
             class="btn-accion"
-            [color]="actaActual()?.estado === 'Observada' ? 'danger' : 'primary'"
-            [disabled]="actaActual()?.estado === 'Validada'"
+            color="primary"
             (click)="irARegistrarActa()"
           >
             <ion-icon slot="start" name="camera-outline"></ion-icon>
-            @if (actaActual()?.estado === 'Validada') {
-              Acta Validada (Solo Lectura)
-            } @else if (actaActual()?.estado === 'Observada') {
-              Corregir y Reenviar Acta
-            } @else if (actaActual()) {
-              Ver o Actualizar Acta Enviada
-            } @else {
-              Registrar Acta y Capturar Foto
-            }
+            Registrar / Modificar Actas de la Mesa
           </ion-button>
         </ion-card-content>
       </ion-card>

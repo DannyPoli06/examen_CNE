@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import {
   IonBadge,
   IonButton,
+  IonButtons,
   IonCard,
   IonCardContent,
   IonCardHeader,
@@ -12,8 +13,10 @@ import {
   IonContent,
   IonHeader,
   IonIcon,
+  IonInput,
   IonItem,
-  IonLabel,
+  IonModal,
+  IonNote,
   IonRefresher,
   IonRefresherContent,
   IonSearchbar,
@@ -36,11 +39,13 @@ import {
 } from 'firebase/firestore';
 import { addIcons } from 'ionicons';
 import {
+  addCircleOutline,
   businessOutline,
   checkmarkDoneOutline,
+  closeOutline,
   documentTextOutline,
-  personAddOutline,
   peopleOutline,
+  personAddOutline,
   searchOutline,
 } from 'ionicons/icons';
 
@@ -51,7 +56,9 @@ import {
   UsuarioPerfil,
 } from '../../core/models/electoral.models';
 import { ActasService } from '../../core/services/actas';
+import { UsuariosService } from '../../core/services/usuarios';
 import { SessionStore } from '../../core/state/session.store';
+import { validarCedulaEcuador } from '../../core/validators/cedula';
 import { ActaVisorModalComponent } from '../../shared/components/acta-visor-modal/acta-visor-modal.component';
 import { UiStateBannerComponent } from '../../shared/components/ui-state-banner/ui-state-banner.component';
 
@@ -64,6 +71,7 @@ import { UiStateBannerComponent } from '../../shared/components/ui-state-banner/
     IonHeader,
     IonToolbar,
     IonTitle,
+    IonButtons,
     IonContent,
     IonRefresher,
     IonRefresherContent,
@@ -76,11 +84,13 @@ import { UiStateBannerComponent } from '../../shared/components/ui-state-banner/
     IonCardSubtitle,
     IonCardContent,
     IonItem,
-    IonLabel,
     IonBadge,
     IonButton,
     IonIcon,
     IonSpinner,
+    IonModal,
+    IonInput,
+    IonNote,
     UiStateBannerComponent,
   ],
   templateUrl: './mesas.page.html',
@@ -90,12 +100,25 @@ export class MesasPage implements OnInit, OnDestroy {
   private readonly sessionStore = inject(SessionStore);
   private readonly actasService = inject(ActasService);
   private readonly modalCtrl = inject(ModalController);
+  private readonly usuariosService = inject(UsuariosService);
 
   readonly recinto = this.sessionStore.recintoAsignado;
   readonly mesas = signal<JrvMesa[]>([]);
   readonly veedores = signal<UsuarioPerfil[]>([]);
   readonly cargando = signal<boolean>(true);
   readonly guardandoVeedorId = signal<string>('');
+
+  // Modal crear veedor
+  readonly modalVeedorAbierto = signal<boolean>(false);
+  readonly guardandoNuevoVeedor = signal<boolean>(false);
+  readonly errorModalVeedor = signal<string>('');
+
+  nuevoVeedorCedula = '';
+  nuevoVeedorNombres = '';
+  nuevoVeedorApellidos = '';
+  nuevoVeedorTelefono = '';
+  nuevoVeedorCorreo = '';
+  mesaAsignarInicial = '';
 
   filtroEstado: 'Todos' | EstadoMesa = 'Todos';
   textoBusqueda = '';
@@ -136,6 +159,8 @@ export class MesasPage implements OnInit, OnDestroy {
       personAddOutline,
       peopleOutline,
       searchOutline,
+      addCircleOutline,
+      closeOutline,
     });
   }
 
@@ -172,11 +197,77 @@ export class MesasPage implements OnInit, OnDestroy {
     }
   }
 
+  abrirModalCrearVeedor(): void {
+    this.errorModalVeedor.set('');
+    this.nuevoVeedorCedula = '';
+    this.nuevoVeedorNombres = '';
+    this.nuevoVeedorApellidos = '';
+    this.nuevoVeedorTelefono = '';
+    this.nuevoVeedorCorreo = '';
+    this.mesaAsignarInicial = '';
+    this.modalVeedorAbierto.set(true);
+  }
+
+  cerrarModalCrearVeedor(): void {
+    this.modalVeedorAbierto.set(false);
+  }
+
+  async guardarNuevoVeedor(): Promise<void> {
+    this.errorModalVeedor.set('');
+    const recintoID = this.recinto()?.ID || this.sessionStore.perfil()?.recintoID;
+    const provinciaID = this.sessionStore.perfil()?.provinciaID || '17';
+
+    if (!recintoID) {
+      this.errorModalVeedor.set('No se identificó el recinto asignado.');
+      return;
+    }
+
+    if (!validarCedulaEcuador(this.nuevoVeedorCedula.trim())) {
+      this.errorModalVeedor.set('Ingresa una cédula válida de 10 dígitos.');
+      return;
+    }
+
+    if (!this.nuevoVeedorNombres.trim() || !this.nuevoVeedorApellidos.trim()) {
+      this.errorModalVeedor.set('Completa los nombres y apellidos del veedor.');
+      return;
+    }
+
+    this.guardandoNuevoVeedor.set(true);
+    try {
+      const nombreCompleto = `${this.nuevoVeedorNombres.trim()} ${this.nuevoVeedorApellidos.trim()}`;
+      const nuevo = await this.usuariosService.registrarUsuarioElectoral({
+        cedula: this.nuevoVeedorCedula.trim(),
+        nombres: this.nuevoVeedorNombres.trim(),
+        apellidos: this.nuevoVeedorApellidos.trim(),
+        telefono: this.nuevoVeedorTelefono.trim(),
+        correo: this.nuevoVeedorCorreo.trim(),
+        rol: 'Veedor',
+        provinciaID,
+        recintoID,
+        ...(this.mesaAsignarInicial ? { jrvID: this.mesaAsignarInicial } : {}),
+      });
+
+      if (this.mesaAsignarInicial) {
+        await updateDoc(doc(firestoreDb, 'jrvs', this.mesaAsignarInicial), {
+          veedorUID: nuevo.uID,
+          veedorNombre: nombreCompleto,
+        });
+      }
+
+      await this.cargarVeedoresRecinto(recintoID);
+      this.cerrarModalCrearVeedor();
+    } catch (err) {
+      this.errorModalVeedor.set(err instanceof Error ? err.message : 'Error al crear veedor.');
+    } finally {
+      this.guardandoNuevoVeedor.set(false);
+    }
+  }
+
   private observarMesasRecinto(recintoID: string): void {
     this.desuscribirMesas?.();
 
     const consulta = query(
-      collection(firestoreDb, 'jrv'),
+      collection(firestoreDb, 'jrvs'),
       where('recintoID', '==', recintoID)
     );
 
@@ -215,7 +306,7 @@ export class MesasPage implements OnInit, OnDestroy {
     this.guardandoVeedorId.set(mesa.ID);
     try {
       await Promise.all([
-        updateDoc(doc(firestoreDb, 'jrv', mesa.ID), {
+        updateDoc(doc(firestoreDb, 'jrvs', mesa.ID), {
           veedorUID: veedor.uID,
           veedorNombre: veedor.nombres,
         }),
@@ -230,8 +321,9 @@ export class MesasPage implements OnInit, OnDestroy {
   }
 
   async verActaMesa(mesa: JrvMesa): Promise<void> {
-    const actaID = mesa.actaID || `ACTA-${mesa.ID}`;
-    const acta = await this.actasService.obtenerActaPorId(actaID);
+    const todas = this.actasService.actas();
+    const actaMesa = todas.find((a) => a.jrvID === mesa.ID);
+    const acta = actaMesa || (await this.actasService.obtenerActaPorId(mesa.actaID || `ACTA-${mesa.ID}-Alcalde`));
     if (!acta) return;
 
     const modal = await this.modalCtrl.create({

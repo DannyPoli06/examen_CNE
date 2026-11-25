@@ -1,6 +1,12 @@
 <ion-header class="ion-no-border">
   <ion-toolbar class="cne-toolbar">
     <ion-title>JRV y Actas del Recinto</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="solid" color="warning" class="btn-nuevo-header" (click)="abrirModalCrearVeedor()">
+        <ion-icon slot="start" name="person-add-outline"></ion-icon>
+        Nuevo Veedor
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
@@ -128,4 +134,64 @@
       }
     }
   </div>
+
+  <!-- Modal Crear Nuevo Veedor -->
+  <ion-modal [isOpen]="modalVeedorAbierto()">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar class="cne-toolbar">
+          <ion-title>Registrar Veedor Electoral</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="cerrarModalCrearVeedor()">
+              <ion-icon name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <div class="form-modal-box">
+          <p class="recinto-info-txt">Recinto: <strong>{{ recinto()?.nombre }}</strong></p>
+
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Cédula Ecuatoriana (10 dígitos)" labelPlacement="floating" [(ngModel)]="nuevoVeedorCedula" maxlength="10"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Nombres" labelPlacement="floating" [(ngModel)]="nuevoVeedorNombres"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Apellidos" labelPlacement="floating" [(ngModel)]="nuevoVeedorApellidos"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Teléfono / Celular" labelPlacement="floating" [(ngModel)]="nuevoVeedorTelefono" placeholder="0991234567"></ion-input>
+          </ion-item>
+          <ion-item lines="outline" class="item-form">
+            <ion-input label="Correo Electrónico" labelPlacement="floating" type="email" [(ngModel)]="nuevoVeedorCorreo" placeholder="veedor@correo.com"></ion-input>
+          </ion-item>
+
+          <ion-item lines="outline" class="item-form">
+            <ion-select label="Asignar JRV Inicial (Opcional)" labelPlacement="floating" [(ngModel)]="mesaAsignarInicial" interface="popover">
+              <ion-select-option value="">Sin mesa asignada por ahora</ion-select-option>
+              @for (m of mesas(); track m.ID) {
+                <ion-select-option [value]="m.ID">JRV N.° {{ m.numero }} ({{ m.genero }})</ion-select-option>
+              }
+            </ion-select>
+          </ion-item>
+
+          <p class="nota-clave-txt">Contraseña de acceso inicial: <strong>Ecuador2026</strong> (cambio obligatorio en primer ingreso).</p>
+
+          @if (errorModalVeedor()) {
+            <ion-note color="danger" class="error-msg-modal">{{ errorModalVeedor() }}</ion-note>
+          }
+
+          <ion-button expand="block" color="primary" [disabled]="guardandoNuevoVeedor()" (click)="guardarNuevoVeedor()" class="btn-guardar-modal">
+            @if (guardandoNuevoVeedor()) {
+              <ion-spinner name="crescent"></ion-spinner>
+            } @else {
+              Registrar Veedor
+            }
+          </ion-button>
+        </div>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
 </ion-content>

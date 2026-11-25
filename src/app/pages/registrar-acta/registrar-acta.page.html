@@ -17,10 +17,19 @@
         <p>Cargando papeleta y datos de la JRV...</p>
       </div>
     } @else if (jrv(); as mesa) {
+      <ion-segment [value]="dignidad()" (ionChange)="cambiarDignidad($event.detail.value)" class="segmento-dignidad">
+        <ion-segment-button value="Alcalde">
+          Acta Alcaldía
+        </ion-segment-button>
+        <ion-segment-button value="Prefecto">
+          Acta Prefectura
+        </ion-segment-button>
+      </ion-segment>
+
       <ion-card class="card-cne">
         <ion-card-header>
           <div class="fila-superior">
-            <span class="badge-jrv">{{ mesa.ID }}</span>
+            <span class="badge-jrv">{{ mesa.ID }} • {{ dignidad() }}</span>
             <ion-badge color="primary">Padrón: {{ mesa.electores }}</ion-badge>
           </div>
           <ion-card-title>
@@ -172,6 +181,19 @@
           @if (fotoDataUrl() || fotoUrlExistente()) {
             <div class="preview-foto">
               <img [src]="fotoDataUrl() || fotoUrlExistente()" alt="Foto del acta electoral" />
+            </div>
+
+            <div class="comprobacion-nitidez-box">
+              <ion-item lines="none" class="item-nitidez">
+                <ion-checkbox
+                  [(ngModel)]="nitidezConfirmada"
+                  labelPlacement="end"
+                >
+                  <span class="texto-nitidez">
+                    <strong>Comprobación de nitidez (R7):</strong> Confirmo que las firmas, números y texto del acta son totalmente legibles y sin reflejos.
+                  </span>
+                </ion-checkbox>
+              </ion-item>
             </div>
           }
 

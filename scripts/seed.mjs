@@ -37,32 +37,41 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const ahora = new Date().toISOString();
 
-async function asegurarUsuario(cedula) {
-  const email = `${cedula}@cne.gob.ec`;
+async function asegurarUsuario(email, clave = 'Ecuador2026') {
   try {
-    const cred = await createUserWithEmailAndPassword(auth, email, 'Ecuador2026');
+    const cred = await createUserWithEmailAndPassword(auth, email, clave);
     return cred.user.uid;
   } catch {
-    const cred = await signInWithEmailAndPassword(auth, email, 'Ecuador2026');
+    const cred = await signInWithEmailAndPassword(auth, email, clave);
     return cred.user.uid;
   }
 }
 
 async function poblarDatos() {
-  console.log('Iniciando carga inicial en Firebase...');
+  console.log('Iniciando carga inicial de datos electorales en Firebase...');
 
-  const uidProvincial = await asegurarUsuario('1710000001');
-  const uidCoordRecinto = await asegurarUsuario('1710000002');
-  const uidVeedor1 = await asegurarUsuario('1710000003');
-  const uidVeedor2 = await asegurarUsuario('1710000004');
+  // Cédulas válidas módulo 10
+  const cedProvincial = '1710000017';
+  const cedCoordRecinto = '1710000025';
+  const cedVeedor1 = '1710000033';
+  const cedVeedor2 = '1710000041';
 
-  await signInWithEmailAndPassword(auth, '1710000001@cne.gob.ec', 'Ecuador2026');
+  const uidProvincial = await asegurarUsuario(`${cedProvincial}@cne.gob.ec`, 'Ecuador2026');
+  const uidCoordRecinto = await asegurarUsuario(`${cedCoordRecinto}@cne.gob.ec`, 'Ecuador2026');
+  const uidVeedor1 = await asegurarUsuario(`${cedVeedor1}@cne.gob.ec`, 'Ecuador2026');
+  const uidVeedor2 = await asegurarUsuario(`${cedVeedor2}@cne.gob.ec`, 'Ecuador2026');
 
-  // 1. Usuarios (3 roles principales)
+  // Iniciar sesion para tener permisos de escritura
+  await signInWithEmailAndPassword(auth, `${cedProvincial}@cne.gob.ec`, 'Ecuador2026');
+
+  // 1. Usuarios con datos completos
   await setDoc(doc(db, 'usuarios', uidProvincial), {
     uID: uidProvincial,
-    cedula: '1710000001',
-    nombres: 'Carlos Mendoza',
+    cedula: cedProvincial,
+    correo: `${cedProvincial}@cne.gob.ec`,
+    nombres: 'Carlos Alberto',
+    apellidos: 'Mendoza Loor',
+    telefono: '0991234567',
     rol: 'CoordProvincial',
     provinciaID: '17',
     primeraVezAcceso: false,
@@ -72,43 +81,52 @@ async function poblarDatos() {
 
   await setDoc(doc(db, 'usuarios', uidCoordRecinto), {
     uID: uidCoordRecinto,
-    cedula: '1710000002',
-    nombres: 'Lucía Paredes',
+    cedula: cedCoordRecinto,
+    correo: `${cedCoordRecinto}@cne.gob.ec`,
+    nombres: 'Lucía Elena',
+    apellidos: 'Paredes Viteri',
+    telefono: '0987654321',
     rol: 'CoordRecinto',
     provinciaID: '17',
     recintoID: 'REC-17-001',
-    primeraVezAcceso: true,
+    primeraVezAcceso: false,
     activo: true,
     creadoEn: ahora,
   });
 
   await setDoc(doc(db, 'usuarios', uidVeedor1), {
     uID: uidVeedor1,
-    cedula: '1710000003',
-    nombres: 'Andrés Salazar',
+    cedula: cedVeedor1,
+    correo: `${cedVeedor1}@cne.gob.ec`,
+    nombres: 'Andrés Marcelo',
+    apellidos: 'Salazar Castro',
+    telefono: '0971122334',
     rol: 'Veedor',
     provinciaID: '17',
     recintoID: 'REC-17-001',
     jrvID: 'JRV-17-001-01M',
-    primeraVezAcceso: true,
+    primeraVezAcceso: false,
     activo: true,
     creadoEn: ahora,
   });
 
   await setDoc(doc(db, 'usuarios', uidVeedor2), {
     uID: uidVeedor2,
-    cedula: '1710000004',
-    nombres: 'Valeria Torres',
+    cedula: cedVeedor2,
+    correo: `${cedVeedor2}@cne.gob.ec`,
+    nombres: 'Valeria Patricia',
+    apellidos: 'Torres Mora',
+    telefono: '0969988776',
     rol: 'Veedor',
     provinciaID: '17',
     recintoID: 'REC-17-001',
     jrvID: 'JRV-17-001-01F',
-    primeraVezAcceso: true,
+    primeraVezAcceso: false,
     activo: true,
     creadoEn: ahora,
   });
 
-  // 2. Recinto basado en tu hoja de consulta CNE
+  // 2. Recintos electorales
   await setDoc(doc(db, 'recintos', 'REC-17-001'), {
     ID: 'REC-17-001',
     provinciaID: '17',
@@ -118,10 +136,22 @@ async function poblarDatos() {
     direccion: 'JUAN PIO MONTUFAR 18-71 Y TAJAMAR',
     totalJRVS: 2,
     coordinadorRecintoUID: uidCoordRecinto,
-    coordenadas: { lat: -0.0952, lng: -78.4215 },
+    coordinadorNombre: 'Lucía Elena Paredes Viteri',
+    coordenadas: { lat: -0.0952, lng: -78.4215, precision: 10 },
   });
 
-  // 3. Mesas / JRV del recinto
+  await setDoc(doc(db, 'recintos', 'REC-17-002'), {
+    ID: 'REC-17-002',
+    provinciaID: '17',
+    canton: 'QUITO',
+    parroquia: 'INAQUITO',
+    nombre: 'COLEGIO EXPERIMENTAL BENALCAZAR',
+    direccion: 'AV. 6 DE DICIEMBRE Y PORTUGAL',
+    totalJRVS: 2,
+    coordenadas: { lat: -0.1807, lng: -78.4842, precision: 12 },
+  });
+
+  // 3. Mesas JRVs
   await setDoc(doc(db, 'jrvs', 'JRV-17-001-01M'), {
     ID: 'JRV-17-001-01M',
     recintoID: 'REC-17-001',
@@ -131,7 +161,7 @@ async function poblarDatos() {
     electores: 350,
     estado: 'Pendiente',
     veedorUID: uidVeedor1,
-    veedorNombre: 'Andrés Salazar',
+    veedorNombre: 'Andrés Marcelo Salazar Castro',
   });
 
   await setDoc(doc(db, 'jrvs', 'JRV-17-001-01F'), {
@@ -143,26 +173,125 @@ async function poblarDatos() {
     electores: 348,
     estado: 'Pendiente',
     veedorUID: uidVeedor2,
-    veedorNombre: 'Valeria Torres',
+    veedorNombre: 'Valeria Patricia Torres Mora',
   });
 
-  // 4. Listas y candidatos
+  await setDoc(doc(db, 'jrvs', 'JRV-17-002-01M'), {
+    ID: 'JRV-17-002-01M',
+    recintoID: 'REC-17-002',
+    nombreRecinto: 'COLEGIO EXPERIMENTAL BENALCAZAR',
+    numero: 1,
+    genero: 'M',
+    electores: 350,
+    estado: 'Pendiente',
+  });
+
+  await setDoc(doc(db, 'jrvs', 'JRV-17-002-01F'), {
+    ID: 'JRV-17-002-01F',
+    recintoID: 'REC-17-002',
+    nombreRecinto: 'COLEGIO EXPERIMENTAL BENALCAZAR',
+    numero: 1,
+    genero: 'F',
+    electores: 350,
+    estado: 'Pendiente',
+  });
+
+  // 4. Cinco organizaciones para Alcaldía y cinco para Prefectura
   const listas = [
-    { ID: 'LISTA-01', listaPerteneciente: 'Lista 1', siglas: 'MUP', nombrePartido: 'Movimiento Unidad Popular', candidato: 'Elena Villavicencio' },
-    { ID: 'LISTA-02', listaPerteneciente: 'Lista 2', siglas: 'ANP', nombrePartido: 'Alianza Nacional Progresista', candidato: 'Roberto Cárdenas' },
-    { ID: 'LISTA-03', listaPerteneciente: 'Lista 3', siglas: 'FCD', nombrePartido: 'Frente Ciudadano Democrático', candidato: 'Sofía Montalvo' },
-    { ID: 'LISTA-04', listaPerteneciente: 'Lista 4', siglas: 'IRE', nombrePartido: 'Izquierda Renovadora Ecuatoriana', candidato: 'Diego Zambrano' },
+    // Alcaldia de Quito
+    {
+      ID: 'ALC-01',
+      dignidad: 'Alcalde',
+      listaPerteneciente: '1',
+      siglas: 'CD',
+      nombrePartido: 'Movimiento Centro Democrático',
+      candidato: 'Elena Villavicencio',
+    },
+    {
+      ID: 'ALC-02',
+      dignidad: 'Alcalde',
+      listaPerteneciente: '2',
+      siglas: 'UP',
+      nombrePartido: 'Movimiento Unidad Popular',
+      candidato: 'Roberto Cárdenas',
+    },
+    {
+      ID: 'ALC-03',
+      dignidad: 'Alcalde',
+      listaPerteneciente: '5',
+      siglas: 'RC',
+      nombrePartido: 'Revolución Ciudadana',
+      candidato: 'Pavel Muñoz',
+    },
+    {
+      ID: 'ALC-04',
+      dignidad: 'Alcalde',
+      listaPerteneciente: '6',
+      siglas: 'PSC',
+      nombrePartido: 'Partido Social Cristiano',
+      candidato: 'Diego Zambrano',
+    },
+    {
+      ID: 'ALC-05',
+      dignidad: 'Alcalde',
+      listaPerteneciente: '21',
+      siglas: 'CREO',
+      nombrePartido: 'Movimiento CREO',
+      candidato: 'Luz Marina Vega',
+    },
+
+    // Prefectura de Pichincha
+    {
+      ID: 'PREF-01',
+      dignidad: 'Prefecto',
+      listaPerteneciente: '1',
+      siglas: 'CD',
+      nombrePartido: 'Movimiento Centro Democrático',
+      candidato: 'Andrea Hidalgo',
+    },
+    {
+      ID: 'PREF-02',
+      dignidad: 'Prefecto',
+      listaPerteneciente: '2',
+      siglas: 'UP',
+      nombrePartido: 'Movimiento Unidad Popular',
+      candidato: 'Natasha Rojas',
+    },
+    {
+      ID: 'PREF-03',
+      dignidad: 'Prefecto',
+      listaPerteneciente: '5',
+      siglas: 'RC',
+      nombrePartido: 'Revolución Ciudadana',
+      candidato: 'Paola Pabón',
+    },
+    {
+      ID: 'PREF-04',
+      dignidad: 'Prefecto',
+      listaPerteneciente: '6',
+      siglas: 'PSC',
+      nombrePartido: 'Partido Social Cristiano',
+      candidato: 'Guillermo Churuchumbi',
+    },
+    {
+      ID: 'PREF-05',
+      dignidad: 'Prefecto',
+      listaPerteneciente: '21',
+      siglas: 'CREO',
+      nombrePartido: 'Movimiento CREO',
+      candidato: 'Eduardo del Pozo',
+    },
   ];
 
   for (const item of listas) {
     await setDoc(doc(db, 'listas', item.ID), item);
   }
 
-  console.log('Datos por default agregados :D.');
+  console.log('Datos iniciales cargados exitosamente.');
   process.exit(0);
 }
 
 poblarDatos().catch((err) => {
-  console.error(' No valio :', err.message);
+  console.error('Error al poblar datos iniciales:', err.message);
   process.exit(1);
 });

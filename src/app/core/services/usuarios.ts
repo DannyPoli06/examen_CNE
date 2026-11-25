@@ -1,6 +1,11 @@
 import { Injectable, signal } from '@angular/core';
 import { deleteApp, initializeApp } from 'firebase/app';
-import { createUserWithEmailAndPassword, getAuth, signOut } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  sendPasswordResetEmail,
+  signOut,
+} from 'firebase/auth';
 import {
   Unsubscribe,
   collection,
@@ -22,6 +27,9 @@ import { validarCedulaEcuador } from '../validators/cedula';
 export interface NuevoUsuarioElectoral {
   cedula: string;
   nombres: string;
+  apellidos?: string;
+  telefono?: string;
+  correo?: string;
   rol: RolSistema;
   provinciaID: string;
   recintoID?: string;
@@ -105,8 +113,8 @@ export class UsuariosService {
       throw new Error('La cédula ingresada no es válida según el registro civil.');
     }
 
-    const correo = `${cedulaLimpia}${this.SUFIJO_CORREO}`;
-    const claveInicial = (datos.claveTemporal ?? cedulaLimpia).trim();
+    const correo = (datos.correo?.trim() || `${cedulaLimpia}${this.SUFIJO_CORREO}`).toLowerCase();
+    const claveInicial = (datos.claveTemporal || 'Ecuador2026').trim();
 
     if (claveInicial.length < 6) {
       throw new Error('La contraseña inicial debe tener al menos 6 caracteres.');
@@ -126,22 +134,31 @@ export class UsuariosService {
       );
 
       const nuevoUid = credencial.user.uid;
+
+      try {
+        await sendPasswordResetEmail(authSecundario, correo);
+      } catch {
+        // En emuladores o sin cuota smtp se omite envio
+      }
+
       await signOut(authSecundario);
 
       const ahora = new Date().toISOString();
       const perfil: UsuarioPerfil = {
-      uID: nuevoUid,
-      cedula: cedulaLimpia,
-      correo,
-      nombres: datos.nombres.trim(),
-      rol: datos.rol,
-      provinciaID: datos.provinciaID,
-      primeraVezAcceso: true,
-      activo: true,
-      creadoEn: ahora,
-      ...(datos.recintoID ? { recintoID: datos.recintoID } : {}),
-      ...(datos.jrvID ? { jrvID: datos.jrvID } : {}),
-    };
+        uID: nuevoUid,
+        cedula: cedulaLimpia,
+        correo,
+        nombres: datos.nombres.trim(),
+        ...(datos.apellidos ? { apellidos: datos.apellidos.trim() } : {}),
+        ...(datos.telefono ? { telefono: datos.telefono.trim() } : {}),
+        rol: datos.rol,
+        provinciaID: datos.provinciaID,
+        primeraVezAcceso: true,
+        activo: true,
+        creadoEn: ahora,
+        ...(datos.recintoID ? { recintoID: datos.recintoID } : {}),
+        ...(datos.jrvID ? { jrvID: datos.jrvID } : {}),
+      };
 
       await setDoc(doc(firestoreDb, 'usuarios', nuevoUid), perfil);
       return perfil;

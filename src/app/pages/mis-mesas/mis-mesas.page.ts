@@ -68,28 +68,9 @@ export class MisMesasPage {
   readonly recinto = this.sessionStore.recintoAsignado;
   readonly jrv = this.sessionStore.jrvAsignada;
 
-  readonly actaActual = signal<ActaElectoral | null>(null);
+  readonly actaAlcalde = signal<ActaElectoral | null>(null);
+  readonly actaPrefecto = signal<ActaElectoral | null>(null);
   readonly cargandoActa = signal<boolean>(false);
-
-  readonly estadoVisual = computed(() => {
-    const acta = this.actaActual();
-    const mesa = this.jrv();
-
-    if (!acta && mesa?.estado === 'Pendiente') {
-      return { texto: 'Pendiente de Escrutinio', color: 'warning' };
-    }
-
-    const estado = acta?.estado ?? mesa?.estado ?? 'Pendiente';
-    switch (estado) {
-      case 'Validada':
-      case 'Registrada':
-        return { texto: 'Acta Validada', color: 'success' };
-      case 'Observada':
-        return { texto: 'Observada - Requiere Corrección', color: 'danger' };
-      default:
-        return { texto: 'Pendiente de Escrutinio', color: 'warning' };
-    }
-  });
 
   constructor() {
     addIcons({
@@ -122,16 +103,22 @@ export class MisMesasPage {
   async cargarEstadoActa(): Promise<void> {
     const mesa = this.jrv();
     if (!mesa) {
-      this.actaActual.set(null);
+      this.actaAlcalde.set(null);
+      this.actaPrefecto.set(null);
       return;
     }
 
     this.cargandoActa.set(true);
     try {
-      const acta = await this.actasService.obtenerActaPorId(`ACTA-${mesa.ID}`);
-      this.actaActual.set(acta);
+      const [alc, pref, legacy] = await Promise.all([
+        this.actasService.obtenerActaPorId(`ACTA-${mesa.ID}-Alcalde`),
+        this.actasService.obtenerActaPorId(`ACTA-${mesa.ID}-Prefecto`),
+        this.actasService.obtenerActaPorId(`ACTA-${mesa.ID}`),
+      ]);
+      this.actaAlcalde.set(alc || legacy);
+      this.actaPrefecto.set(pref);
     } catch (error) {
-      console.error('Error al consultar acta de la mesa:', error);
+      console.error('Error al consultar actas de la mesa:', error);
     } finally {
       this.cargandoActa.set(false);
     }
@@ -141,5 +128,19 @@ export class MisMesasPage {
     const mesa = this.jrv();
     if (!mesa) return;
     await this.router.navigate(['/tabs/registrar-acta', mesa.ID]);
+  }
+
+  estadoVisualDignidad(acta: ActaElectoral | null) {
+    if (!acta) {
+      return { texto: 'Pendiente de Registro', color: 'warning' };
+    }
+    switch (acta.estado) {
+      case 'Validada':
+        return { texto: 'Acta Validada', color: 'success' };
+      case 'Observada':
+        return { texto: 'Acta Observada', color: 'danger' };
+      default:
+        return { texto: 'Transmitida', color: 'primary' };
+    }
   }
 }

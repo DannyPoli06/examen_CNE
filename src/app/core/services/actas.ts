@@ -15,6 +15,7 @@ import {
 import { firestoreDb } from '../config/backend-clients';
 import {
   ActaElectoral,
+  DignidadElectoral,
   EstadoMesa,
   EstadoRegistroActa,
   JrvMesa,
@@ -29,6 +30,7 @@ import { JrvService } from './jrv';
 export interface RegistroActaPayload {
   jrv: JrvMesa;
   veedor: UsuarioPerfil;
+  dignidad?: DignidadElectoral;
   votosPorLista: VotoPorLista[];
   votosBlancos: number;
   votosNulos: number;
@@ -130,6 +132,7 @@ export class ActasService {
     const {
       jrv,
       veedor,
+      dignidad = 'Alcalde',
       votosPorLista,
       votosBlancos,
       votosNulos,
@@ -157,7 +160,7 @@ export class ActasService {
       fotoUrl = await this.camaraService.subirFotoActa(
         fotoDataUrl,
         jrv.recintoID,
-        jrv.ID
+        `${jrv.ID}_${dignidad}`
       );
     }
 
@@ -169,9 +172,10 @@ export class ActasService {
       notas.push(observacionManual.trim());
     }
 
-    const actaID = `ACTA-${jrv.ID}`;
+    const actaID = `ACTA-${jrv.ID}-${dignidad}`;
     const acta: ActaElectoral = {
       ID: actaID,
+      dignidad,
       recintoID: jrv.recintoID,
       nombreRecinto: jrv.nombreRecinto,
       jrvID: jrv.ID,
