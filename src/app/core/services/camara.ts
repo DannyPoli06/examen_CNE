@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { ACTAS_BUCKET, supabaseClient } from '../config/backend-clients';
 
@@ -12,6 +13,20 @@ export interface FotoCapturada {
 })
 export class CamaraService {
   async capturarFotoActa(usarGaleria = false): Promise<FotoCapturada> {
+    if (Capacitor.isNativePlatform()) {
+      const permisos = await Camera.checkPermissions();
+      const requerido = usarGaleria ? permisos.photos : permisos.camera;
+      if (requerido !== 'granted' && requerido !== 'limited') {
+        const solicitud = await Camera.requestPermissions({
+          permissions: [usarGaleria ? 'photos' : 'camera'],
+        });
+        const estadoFinal = usarGaleria ? solicitud.photos : solicitud.camera;
+        if (estadoFinal !== 'granted' && estadoFinal !== 'limited') {
+          throw new Error('Permiso de cámara o galería denegado en el dispositivo.');
+        }
+      }
+    }
+
     try {
       const imagen = await Camera.getPhoto({
         quality: 80,

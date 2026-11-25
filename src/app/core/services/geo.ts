@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 import { UbicacionGps } from '../models/electoral.models';
 
@@ -7,21 +8,52 @@ import { UbicacionGps } from '../models/electoral.models';
 })
 export class GeoService {
   async obtenerUbicacionActual(): Promise<UbicacionGps> {
-    try {
-      const posicion = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      });
+    if (Capacitor.isNativePlatform()) {
+      const permisos = await Geolocation.checkPermissions();
+      if (permisos.location !== 'granted' && permisos.coarseLocation !== 'granted') {
+        const solicitud = await Geolocation.requestPermissions();
+        if (solicitud.location !== 'granted' && solicitud.coarseLocation !== 'granted') {
+          throw new Error(
+            'Permiso de ubicación denegado. Actívalo en los ajustes de la aplicación.'
+          );
+        }
+      }
 
-      return {
-        lat: posicion.coords.latitude,
-        lng: posicion.coords.longitude,
-        precision: Math.round(posicion.coords.accuracy),
-      };
-    } catch {
-      return this.obtenerUbicacionNavegador();
+      try {
+        const posicion = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 12000,
+          maximumAge: 60000,
+        });
+
+        return {
+          lat: posicion.coords.latitude,
+          lng: posicion.coords.longitude,
+          precision: Math.round(posicion.coords.accuracy),
+        };
+      } catch {
+        // Reintento con precision estandar (red/Wi-Fi) si el GPS tarda en responder
+        try {
+          const posicion = await Geolocation.getCurrentPosition({
+            enableHighAccuracy: false,
+            timeout: 15000,
+            maximumAge: 300000,
+          });
+
+          return {
+            lat: posicion.coords.latitude,
+            lng: posicion.coords.longitude,
+            precision: Math.round(posicion.coords.accuracy),
+          };
+        } catch {
+          throw new Error(
+            'No se pudo obtener la ubicación GPS. Verifica que la ubicación del teléfono esté encendida.'
+          );
+        }
+      }
     }
+
+    return this.obtenerUbicacionNavegador();
   }
 
   generarEnlaceMapa(gps: UbicacionGps): string {
@@ -53,25 +85,44 @@ export class GeoService {
         return;
       }
 
+      const mapearDesdePosicion = (posicion: GeolocationPosition): UbicacionGps => ({
+        lat: posicion.coords.latitude,
+        lng: posicion.coords.longitude,
+        precision: Math.round(posicion.coords.accuracy),
+      });
+
       navigator.geolocation.getCurrentPosition(
-        (posicion) => {
-          resolve({
-            lat: posicion.coords.latitude,
-            lng: posicion.coords.longitude,
-            precision: Math.round(posicion.coords.accuracy),
-          });
-        },
-        () => {
-          reject(
-            new Error(
-              'No se pudo obtener la ubicación GPS. Verifica que los permisos estén activos.'
-            )
+        (posicion) => resolve(mapearDesdePosicion(posicion)),
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) {
+            reject(
+              new Error(
+                'Permiso de ubicación denegado. Habilita el acceso a ubicación en el navegador o dispositivo.'
+              )
+            );
+            return;
+          }
+
+          navigator.geolocation.getCurrentPosition(
+            (posicion) => resolve(mapearDesdePosicion(posicion)),
+            () => {
+              reject(
+                new Error(
+                  'No se pudo obtener la ubicación GPS. Verifica que la ubicación esté activa.'
+                )
+              );
+            },
+            {
+              enableHighAccuracy: false,
+              timeout: 15000,
+              maximumAge: 300000,
+            }
           );
         },
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 0,
+          maximumAge: 60000,
         }
       );
     });

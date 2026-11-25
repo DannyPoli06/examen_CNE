@@ -29,7 +29,7 @@ export interface NuevoUsuarioElectoral {
   nombres: string;
   apellidos?: string;
   telefono?: string;
-  correo?: string;
+  correo: string;
   rol: RolSistema;
   provinciaID: string;
   recintoID?: string;
@@ -41,8 +41,6 @@ export interface NuevoUsuarioElectoral {
   providedIn: 'root',
 })
 export class UsuariosService {
-  private readonly SUFIJO_CORREO = '@cne.gob.ec';
-
   readonly usuariosRecinto = signal<UsuarioPerfil[]>([]);
   readonly cargandoUsuarios = signal<boolean>(false);
 
@@ -113,7 +111,11 @@ export class UsuariosService {
       throw new Error('La cédula ingresada no es válida según el registro civil.');
     }
 
-    const correo = (datos.correo?.trim() || `${cedulaLimpia}${this.SUFIJO_CORREO}`).toLowerCase();
+    const correo = (datos.correo ?? '').trim().toLowerCase();
+    if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      throw new Error('Ingresa un correo electrónico válido.');
+    }
+
     const claveInicial = (datos.claveTemporal || 'Ecuador2026').trim();
 
     if (claveInicial.length < 6) {

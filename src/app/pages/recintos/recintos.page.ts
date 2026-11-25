@@ -365,6 +365,12 @@ export class RecintosPage implements OnInit, OnDestroy {
       return;
     }
 
+    const correoCoord = this.nuevoCoordCorreo.trim().toLowerCase();
+    if (!correoCoord || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoCoord)) {
+      this.errorModal.set('Ingresa un correo electrónico válido.');
+      return;
+    }
+
     this.guardando.set(true);
     try {
       const nombreCompleto = `${this.nuevoCoordNombres.trim()} ${this.nuevoCoordApellidos.trim()}`;

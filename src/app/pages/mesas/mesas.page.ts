@@ -232,6 +232,12 @@ export class MesasPage implements OnInit, OnDestroy {
       return;
     }
 
+    const correoVeedor = this.nuevoVeedorCorreo.trim().toLowerCase();
+    if (!correoVeedor || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoVeedor)) {
+      this.errorModalVeedor.set('Ingresa un correo electrónico válido.');
+      return;
+    }
+
     this.guardandoNuevoVeedor.set(true);
     try {
       const nombreCompleto = `${this.nuevoVeedorNombres.trim()} ${this.nuevoVeedorApellidos.trim()}`;
