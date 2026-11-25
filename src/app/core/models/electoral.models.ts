@@ -9,7 +9,7 @@ export interface UbicacionGps {
   precision?: number;
 }
 
-// 1. (JRV)
+// 1. Recintos y Juntas Receptoras del Voto (JRV)
 export interface RecintoElectoral {
   ID: string;
   provinciaID: string;
@@ -35,17 +35,17 @@ export interface JrvMesa {
   actaID?: string;
 }
 
-// 2. Organizaciones políticas y las actas de escrutinio
-export interface OrganizacionPolitica {
+// 2. Listas / Candidatos y Actas de Escrutinio
+export interface ListaCandidato {
   ID: string;
   listaPerteneciente: string;
   siglas: string;
-  nombre: string;
+  nombrePartido: string;
   candidato: string;
 }
 
-export interface VotoOrganizacion {
-  organizacionID: string;
+export interface VotoPorLista {
+  listaID: string;
   listaPerteneciente: string;
   siglas: string;
   votos: number;
@@ -60,7 +60,7 @@ export interface ActaElectoral {
   veedorUID: string;
   veedorCedula: string;
   veedorNombre: string;
-  votosOrganizaciones: VotoOrganizacion[];
+  votosPorLista: VotoPorLista[];
   votosBlancos: number;
   votosNulos: number;
   totalSufragantes: number;
@@ -73,7 +73,7 @@ export interface ActaElectoral {
   creadaEn: string;
 }
 
-// 3. Usuarios 
+// 3. Usuarios del sistema
 export interface UsuarioPerfil {
   uID: string;
   cedula: string;
