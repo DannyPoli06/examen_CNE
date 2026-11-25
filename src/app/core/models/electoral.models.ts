@@ -77,6 +77,7 @@ export interface ActaElectoral {
 export interface UsuarioPerfil {
   uID: string;
   cedula: string;
+  correo: string;
   nombres: string;
   rol: RolSistema;
   provinciaID: string;

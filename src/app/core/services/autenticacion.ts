@@ -2,11 +2,21 @@ import { Injectable, signal } from '@angular/core';
 import {
   User,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   updatePassword,
 } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 
 import { firebaseAuth, firestoreDb } from '../config/backend-clients';
 import { UsuarioPerfil } from '../models/electoral.models';
@@ -15,8 +25,6 @@ import { UsuarioPerfil } from '../models/electoral.models';
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly SUFIJO_CORREO = '@cne.gob.ec';
-
   readonly sesionUsuario = signal<User | null>(null);
   readonly perfilElectoral = signal<UsuarioPerfil | null>(null);
 
@@ -59,9 +67,30 @@ export class AuthService {
     return this.perfilElectoral();
   }
 
-  async ingresarConCedula(cedula: string, clave: string): Promise<UsuarioPerfil> {
-    const correo = `${cedula.trim()}${this.SUFIJO_CORREO}`;
-    const credencial = await signInWithEmailAndPassword(firebaseAuth, correo, clave);
+  async iniciarSesionConCedula(cedula: string, clave: string): Promise<UsuarioPerfil> {
+    const cedulaLimpia = cedula.trim();
+
+    const consulta = query(
+      collection(firestoreDb, 'usuarios'),
+      where('cedula', '==', cedulaLimpia),
+      limit(1)
+    );
+    const snap = await getDocs(consulta);
+
+    if (snap.empty) {
+      throw new Error('La cédula ingresada no tiene un perfil habilitado.');
+    }
+
+    const datosPrevios = snap.docs[0].data() as UsuarioPerfil;
+    if (!datosPrevios.activo || !datosPrevios.correo) {
+      throw new Error('La cédula ingresada no tiene un perfil habilitado.');
+    }
+
+    const credencial = await signInWithEmailAndPassword(
+      firebaseAuth,
+      datosPrevios.correo,
+      clave
+    );
 
     this.sesionUsuario.set(credencial.user);
     const perfil = await this.consultarPerfil(credencial.user.uid);
@@ -98,6 +127,37 @@ export class AuthService {
       primeraVezAcceso: false,
       actualizadoEn: fechaActual,
     });
+  }
+
+  async enviarRecuperacionPorCorreo(correoOCedula: string): Promise<string> {
+    const entrada = correoOCedula.trim().toLowerCase();
+    let correoDestino = entrada;
+
+    if (/^\d{10}$/.test(entrada)) {
+      const consulta = query(
+        collection(firestoreDb, 'usuarios'),
+        where('cedula', '==', entrada),
+        limit(1)
+      );
+      const snap = await getDocs(consulta);
+
+      if (snap.empty) {
+        throw new Error('No se encontró ninguna cuenta asociada a esa cédula.');
+      }
+
+      correoDestino = ((snap.docs[0].data() as UsuarioPerfil).correo ?? '')
+        .trim()
+        .toLowerCase();
+    }
+
+    if (!correoDestino || !correoDestino.includes('@')) {
+      throw new Error(
+        'Ingresa un correo electrónico válido o tu cédula de 10 dígitos.'
+      );
+    }
+
+    await sendPasswordResetEmail(firebaseAuth, correoDestino);
+    return correoDestino;
   }
 
   async salir(): Promise<void> {
