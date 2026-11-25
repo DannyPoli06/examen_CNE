@@ -1,0 +1,44 @@
+.gps-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+
+.gps-ok {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.gps-vacio {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+}
+
+.gps-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.coords {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.mapa-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #0057b8;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+}

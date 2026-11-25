@@ -1,13 +1,131 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>mesas</ion-title>
+<ion-header class="ion-no-border">
+  <ion-toolbar class="cne-toolbar">
+    <ion-title>JRV y Actas del Recinto</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">mesas</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content class="mesas-recinto-content">
+  <ion-refresher slot="fixed" (ionRefresh)="refrescar($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="banner-recinto">
+    <span class="badge-rol">COORDINACIÓN DE RECINTO</span>
+    <h2>{{ recinto()?.nombre || 'Recinto Electoral' }}</h2>
+    @if (recinto(); as r) {
+      <p>
+        <ion-icon name="business-outline"></ion-icon>
+        {{ r.canton }} • {{ r.parroquia }}
+      </p>
+    }
+
+    <div class="resumen-grid">
+      <div class="resumen-item">
+        <strong>{{ resumenEstados().total }}</strong>
+        <span>Total JRV</span>
+      </div>
+      <div class="resumen-item">
+        <strong>{{ resumenEstados().registradas }}</strong>
+        <span>Validadas</span>
+      </div>
+      <div class="resumen-item">
+        <strong>{{ resumenEstados().observadas }}</strong>
+        <span>Observadas</span>
+      </div>
+      <div class="resumen-item">
+        <strong>{{ resumenEstados().pendientes }}</strong>
+        <span>Pendientes</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="contenedor-mesas">
+    <app-ui-state-banner></app-ui-state-banner>
+
+    <ion-card class="filtros-card">
+      <ion-card-content>
+        <ion-searchbar
+          placeholder="Buscar JRV o veedor..."
+          [debounce]="200"
+          [(ngModel)]="textoBusqueda"
+          class="ion-no-padding"
+        ></ion-searchbar>
+
+        <ion-item lines="none" class="filtro-estado-item">
+          <ion-select
+            label="Estado de JRV"
+            labelPlacement="stacked"
+            [(ngModel)]="filtroEstado"
+          >
+            <ion-select-option value="Todos">Todos los estados</ion-select-option>
+            <ion-select-option value="Pendiente">Pendiente</ion-select-option>
+            <ion-select-option value="Registrada">Registrada / Validada</ion-select-option>
+            <ion-select-option value="Observada">Observada</ion-select-option>
+          </ion-select>
+        </ion-item>
+      </ion-card-content>
+    </ion-card>
+
+    @if (cargando()) {
+      <div class="cargando-box">
+        <ion-spinner name="crescent" color="primary"></ion-spinner>
+        <p>Cargando Juntas Receptoras del Voto...</p>
+      </div>
+    } @else {
+      @for (mesa of mesasFiltradas(); track mesa.ID) {
+        <ion-card class="jrv-card">
+          <ion-card-header>
+            <div class="jrv-top">
+              <span class="jrv-tag">JRV N.° {{ mesa.numero }} ({{ mesa.genero }})</span>
+              <ion-badge [color]="colorEstado(mesa.estado)">
+                {{ mesa.estado }}
+              </ion-badge>
+            </div>
+            <ion-card-title>Código: {{ mesa.ID }}</ion-card-title>
+            <ion-card-subtitle>
+              Electores: <strong>{{ mesa.electores }}</strong> •
+              Veedor: <strong>{{ mesa.veedorNombre || 'Sin asignar' }}</strong>
+            </ion-card-subtitle>
+          </ion-card-header>
+
+          <ion-card-content>
+            <ion-item lines="outline" class="select-veedor">
+              <ion-select
+                label="Asignar Veedor"
+                labelPlacement="floating"
+                interface="popover"
+                [value]="mesa.veedorUID || ''"
+                [disabled]="guardandoVeedorId() === mesa.ID"
+                (ionChange)="asignarVeedor(mesa, $event.detail.value)"
+              >
+                @for (v of veedores(); track v.uID) {
+                  <ion-select-option [value]="v.uID">
+                    {{ v.nombres }} ({{ v.cedula }})
+                  </ion-select-option>
+                }
+              </ion-select>
+            </ion-item>
+
+            @if (mesa.estado !== 'Pendiente' || mesa.actaID) {
+              <ion-button
+                expand="block"
+                color="primary"
+                class="btn-ver-acta"
+                (click)="verActaMesa(mesa)"
+              >
+                <ion-icon slot="start" name="document-text-outline"></ion-icon>
+                Revisar y Validar Acta
+              </ion-button>
+            }
+          </ion-card-content>
+        </ion-card>
+      } @empty {
+        <ion-card class="jrv-card">
+          <ion-card-content class="cargando-box">
+            <p>No hay mesas JRV que coincidan con el filtro seleccionado.</p>
+          </ion-card-content>
+        </ion-card>
+      }
+    }
+  </div>
 </ion-content>

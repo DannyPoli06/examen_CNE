@@ -1,0 +1,167 @@
+.cne-toolbar {
+  --background: #0057b8;
+  --color: #ffffff;
+}
+
+.acta-content {
+  --background: #f4f6f9;
+}
+
+.contenedor-acta {
+  padding: 16px 16px 36px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.centro-carga {
+  text-align: center;
+  padding: 40px 16px;
+  color: #64748b;
+}
+
+.card-cne {
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  margin: 0 0 16px;
+  border: 1px solid #e8edf3;
+
+  ion-card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+}
+
+.fila-superior {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.badge-jrv {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0057b8;
+  background: #eff6ff;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.lista-tag {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #0057b8;
+  text-transform: uppercase;
+}
+
+.input-voto {
+  width: 84px;
+  max-width: 84px;
+  text-align: right;
+  font-size: 1.15rem;
+  font-weight: 700;
+  background: #f1f5f9;
+  border-radius: 10px;
+  --padding-start: 8px;
+  --padding-end: 10px;
+}
+
+.grid-totales {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.campo-num {
+  --border-radius: 12px;
+  --background: #f8fafc;
+}
+
+.sufragantes-item {
+  margin-bottom: 12px;
+}
+
+.caja-cuadre {
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 0.84rem;
+
+  .cuadre-numeros {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.cuadre-ok {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.cuadre-alerta {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.bloque-gps {
+  margin-bottom: 14px;
+
+  .btn-gps {
+    margin-top: 8px;
+    --border-radius: 10px;
+  }
+}
+
+.botones-foto {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+
+  ion-button {
+    --border-radius: 10px;
+    font-weight: 600;
+  }
+}
+
+.preview-foto {
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+
+  img {
+    width: 100%;
+    max-height: 280px;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.campo-obs {
+  --border-radius: 12px;
+  --background: #f8fafc;
+}
+
+.error-texto {
+  display: block;
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.btn-enviar-acta {
+  --border-radius: 14px;
+  height: 50px;
+  font-weight: 700;
+  font-size: 1rem;
+}

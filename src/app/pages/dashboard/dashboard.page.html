@@ -1,13 +1,121 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>dashboard</ion-title>
+<ion-header class="ion-no-border">
+  <ion-toolbar class="cne-toolbar">
+    <ion-title>Resultados en Tiempo Real</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">dashboard</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content class="dashboard-content">
+  <ion-refresher slot="fixed" (ionRefresh)="refrescar($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="banner-resultados">
+    <span class="tag-live">ESCRUTINIO EN VIVO • CNE 2026</span>
+    <h2>{{ tituloAmbito() }}</h2>
+    <p>
+      Avance de actas:
+      <strong>
+        {{ metricasGenerales().ingresadas }} / {{ metricasGenerales().totalJrv }} JRV
+        ({{ metricasGenerales().porcentajeAvance }}%)
+      </strong>
+    </p>
+    <ion-progress-bar
+      color="warning"
+      [value]="metricasGenerales().avance"
+      class="barra-avance"
+    ></ion-progress-bar>
+  </div>
+
+  <div class="contenedor-dashboard">
+    <app-ui-state-banner></app-ui-state-banner>
+
+    <ion-segment [(ngModel)]="modoConteo" class="segmento-filtro">
+      <ion-segment-button value="todas">
+        Todas ({{ metricasGenerales().ingresadas }})
+      </ion-segment-button>
+      <ion-segment-button value="validadas">
+        Solo Validadas ({{ metricasGenerales().validadas }})
+      </ion-segment-button>
+    </ion-segment>
+
+    @if (cargando() || actasService.cargandoActas()) {
+      <div class="cargando-box">
+        <ion-spinner name="crescent" color="primary"></ion-spinner>
+        <p>Consolidando actas electorales...</p>
+      </div>
+    } @else {
+      <!-- Resumen de Estado de Actas -->
+      <div class="kpis-grid">
+        <div class="kpi-card">
+          <small>Validadas</small>
+          <strong class="txt-ok">{{ metricasGenerales().validadas }}</strong>
+        </div>
+        <div class="kpi-card">
+          <small>Observadas</small>
+          <strong class="txt-obs">{{ metricasGenerales().observadas }}</strong>
+        </div>
+        <div class="kpi-card">
+          <small>Sufragantes</small>
+          <strong>{{ metricasGenerales().sufragantes | number }}</strong>
+        </div>
+      </div>
+
+      <!-- Resultados por Lista / Candidato -->
+      <ion-card class="card-resultados">
+        <ion-card-header>
+          <ion-card-title>Votación por Organización Política</ion-card-title>
+          <ion-card-subtitle>
+            Ordenado de mayor a menor votación válida
+          </ion-card-subtitle>
+        </ion-card-header>
+
+        <ion-card-content>
+          @for (item of resultadosPorLista(); track item.listaID; let idx = $index) {
+            <div class="fila-candidato">
+              <div class="cabecera-candidato">
+                <div class="info-lista">
+                  <span class="badge-lista">
+                    Lista {{ item.listaPerteneciente }} • {{ item.siglas }}
+                  </span>
+                  <h3>{{ item.candidato }}</h3>
+                  <small>{{ item.nombrePartido }}</small>
+                </div>
+                <div class="cifras-lista">
+                  <strong>{{ item.porcentaje }}%</strong>
+                  <span>{{ item.votos | number }} votos</span>
+                </div>
+              </div>
+
+              <ion-progress-bar
+                [color]="idx === 0 ? 'primary' : 'medium'"
+                [value]="item.porcentaje / 100"
+                class="barra-votos"
+              ></ion-progress-bar>
+            </div>
+          } @empty {
+            <p class="sin-datos">Aún no existen listas configuradas en el sistema.</p>
+          }
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Blancos y Nulos -->
+      <ion-card class="card-resultados">
+        <ion-card-header>
+          <ion-card-title>Votos Blancos y Nulos</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <div class="blancos-nulos-grid">
+            <div class="bn-box">
+              <span>Votos Blancos</span>
+              <strong>{{ metricasGenerales().blancos | number }}</strong>
+            </div>
+            <div class="bn-box">
+              <span>Votos Nulos</span>
+              <strong>{{ metricasGenerales().nulos | number }}</strong>
+            </div>
+          </div>
+        </ion-card-content>
+      </ion-card>
+    }
+  </div>
 </ion-content>

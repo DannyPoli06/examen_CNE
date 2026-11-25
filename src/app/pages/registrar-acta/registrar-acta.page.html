@@ -1,13 +1,211 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>registrar-acta</ion-title>
+<ion-header class="ion-no-border">
+  <ion-toolbar class="cne-toolbar">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/mis-mesas"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Registro de Acta JRV</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">registrar-acta</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content class="acta-content">
+  <div class="contenedor-acta">
+    <app-ui-state-banner></app-ui-state-banner>
+
+    @if (cargandoInicial()) {
+      <div class="centro-carga">
+        <ion-spinner name="crescent" color="primary"></ion-spinner>
+        <p>Cargando papeleta y datos de la JRV...</p>
+      </div>
+    } @else if (jrv(); as mesa) {
+      <ion-card class="card-cne">
+        <ion-card-header>
+          <div class="fila-superior">
+            <span class="badge-jrv">{{ mesa.ID }}</span>
+            <ion-badge color="primary">Padrón: {{ mesa.electores }}</ion-badge>
+          </div>
+          <ion-card-title>
+            JRV N.° {{ mesa.numero }} ({{ mesa.genero }})
+          </ion-card-title>
+          <ion-card-subtitle>{{ mesa.nombreRecinto }}</ion-card-subtitle>
+        </ion-card-header>
+      </ion-card>
+
+      <!-- 1. Votos por Organización Política -->
+      <ion-card class="card-cne">
+        <ion-card-header>
+          <ion-card-title>1. Votos por Lista / Candidato</ion-card-title>
+          <ion-card-subtitle>Ingresa exactamente los valores del acta física</ion-card-subtitle>
+        </ion-card-header>
+        <ion-card-content class="ion-no-padding">
+          <ion-list lines="full">
+            @for (fila of filasListas(); track fila.listaID) {
+              <ion-item>
+                <ion-label class="ion-text-wrap">
+                  <span class="lista-tag">Lista {{ fila.listaPerteneciente }} • {{ fila.siglas }}</span>
+                  <h3>{{ fila.candidato }}</h3>
+                  <p>{{ fila.nombrePartido }}</p>
+                </ion-label>
+                <ion-input
+                  slot="end"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  class="input-voto"
+                  [ngModel]="fila.votos"
+                  (ngModelChange)="actualizarVotoLista(fila.listaID, $event)"
+                ></ion-input>
+              </ion-item>
+            }
+          </ion-list>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- 2. Blancos, Nulos y Sufragantes -->
+      <ion-card class="card-cne">
+        <ion-card-header>
+          <ion-card-title>2. Resumen Numérico del Acta</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <div class="grid-totales">
+            <ion-item lines="outline" class="campo-num">
+              <ion-input
+                label="Votos Blancos"
+                labelPlacement="floating"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                [(ngModel)]="votosBlancos"
+              ></ion-input>
+            </ion-item>
+
+            <ion-item lines="outline" class="campo-num">
+              <ion-input
+                label="Votos Nulos"
+                labelPlacement="floating"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                [(ngModel)]="votosNulos"
+              ></ion-input>
+            </ion-item>
+          </div>
+
+          <ion-item lines="outline" class="campo-num sufragantes-item">
+            <ion-input
+              label="Total Sufragantes (Firmas/Huellas)"
+              labelPlacement="floating"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              [(ngModel)]="totalSufragantes"
+            ></ion-input>
+          </ion-item>
+
+          @if (obtenerEvaluacionCuadre(); as cuadre) {
+            <div
+              class="caja-cuadre"
+              [class.cuadre-ok]="cuadre.estadoSugerido === 'Validada'"
+              [class.cuadre-alerta]="cuadre.estadoSugerido === 'Observada'"
+            >
+              <div class="cuadre-numeros">
+                <span>Suma Votos: <strong>{{ cuadre.totalCalculado }}</strong></span>
+                <span>Sufragantes: <strong>{{ totalSufragantes || 0 }}</strong></span>
+              </div>
+              <p>
+                @if (cuadre.estadoSugerido === 'Validada') {
+                  Acta cuadrada correctamente (pasará como Validada).
+                } @else {
+                  {{ cuadre.observacion }} (se enviará como Observada para revisión).
+                }
+              </p>
+            </div>
+          }
+        </ion-card-content>
+      </ion-card>
+
+      <!-- 3. Evidencia Fotográfica y GPS -->
+      <ion-card class="card-cne">
+        <ion-card-header>
+          <ion-card-title>3. Evidencia Fotográfica y Ubicación</ion-card-title>
+          <ion-card-subtitle>Requisitos obligatorios de respaldo</ion-card-subtitle>
+        </ion-card-header>
+        <ion-card-content>
+          <div class="bloque-gps">
+            <app-gps-badge [coordenadas]="gpsActual()"></app-gps-badge>
+            <ion-button
+              expand="block"
+              fill="outline"
+              size="small"
+              class="btn-gps"
+              [disabled]="capturandoGps()"
+              (click)="obtenerGps()"
+            >
+              <ion-icon slot="start" name="locate-outline"></ion-icon>
+              {{ capturandoGps() ? 'Obteniendo GPS...' : 'Actualizar Ubicación GPS' }}
+            </ion-button>
+          </div>
+
+          <div class="botones-foto">
+            <ion-button
+              expand="block"
+              fill="solid"
+              color="primary"
+              [disabled]="capturandoFoto()"
+              (click)="tomarFoto(false)"
+            >
+              <ion-icon slot="start" name="camera-outline"></ion-icon>
+              Tomar Foto
+            </ion-button>
+
+            <ion-button
+              expand="block"
+              fill="outline"
+              color="primary"
+              [disabled]="capturandoFoto()"
+              (click)="tomarFoto(true)"
+            >
+              <ion-icon slot="start" name="images-outline"></ion-icon>
+              Galería
+            </ion-button>
+          </div>
+
+          @if (fotoDataUrl() || fotoUrlExistente()) {
+            <div class="preview-foto">
+              <img [src]="fotoDataUrl() || fotoUrlExistente()" alt="Foto del acta electoral" />
+            </div>
+          }
+
+          <ion-item lines="outline" class="campo-obs">
+            <ion-textarea
+              label="Observación adicional del veedor (opcional)"
+              labelPlacement="floating"
+              rows="2"
+              [(ngModel)]="observacionManual"
+            ></ion-textarea>
+          </ion-item>
+        </ion-card-content>
+      </ion-card>
+
+      @if (errorMensaje()) {
+        <ion-note color="danger" class="error-texto">
+          {{ errorMensaje() }}
+        </ion-note>
+      }
+
+      <ion-button
+        expand="block"
+        color="success"
+        class="btn-enviar-acta"
+        [disabled]="enviando()"
+        (click)="enviarActa()"
+      >
+        @if (enviando()) {
+          <ion-spinner name="crescent"></ion-spinner>
+        } @else {
+          <ion-icon slot="start" name="send-outline"></ion-icon>
+          Transmitir Acta Electoral
+        }
+      </ion-button>
+    }
+  </div>
 </ion-content>

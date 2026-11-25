@@ -1,0 +1,112 @@
+.cne-toolbar {
+  --background: #0057b8;
+  --color: #ffffff;
+}
+
+.visor-content {
+  --background: #f4f6f9;
+}
+
+.contenedor-visor {
+  padding: 16px 16px 32px;
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+.card-visor {
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  margin: 0 0 16px;
+  border: 1px solid #e8edf3;
+
+  ion-card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+}
+
+.cabecera-estado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.codigo-acta {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #0057b8;
+  background: #eff6ff;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.meta-veedor {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 12px;
+
+  small {
+    display: block;
+    font-size: 0.72rem;
+    color: #64748b;
+  }
+
+  strong {
+    font-size: 0.9rem;
+    color: #0f172a;
+  }
+}
+
+.foto-acta-box {
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+
+  img {
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.badge-voto {
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.campo-obs {
+  --border-radius: 12px;
+  --background: #f8fafc;
+  margin-bottom: 12px;
+}
+
+.error-msg {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.acciones-dictamen {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+
+  ion-button {
+    --border-radius: 12px;
+    height: 44px;
+    font-weight: 700;
+  }
+}

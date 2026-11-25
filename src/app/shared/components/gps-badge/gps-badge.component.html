@@ -1,1 +1,24 @@
-<p>gps-badge works!</p>
+@if (coordenadas(); as gps) {
+  <div class="gps-pill gps-ok">
+    <ion-icon name="location-outline"></ion-icon>
+    <div class="gps-info">
+      <span class="coords">
+        {{ gps.lat | number: '1.5-5' }}, {{ gps.lng | number: '1.5-5' }}
+      </span>
+      @if (gps.precision) {
+        <small>Precisión: ±{{ gps.precision | number: '1.0-0' }} m</small>
+      }
+    </div>
+    @if (mapaUrl()) {
+      <a [href]="mapaUrl()" target="_blank" rel="noopener" class="mapa-link">
+        <ion-icon name="navigate-outline"></ion-icon>
+        Mapa
+      </a>
+    }
+  </div>
+} @else {
+  <div class="gps-pill gps-vacio">
+    <ion-icon name="warning-outline"></ion-icon>
+    <span>Ubicación GPS aún no capturada</span>
+  </div>
+}

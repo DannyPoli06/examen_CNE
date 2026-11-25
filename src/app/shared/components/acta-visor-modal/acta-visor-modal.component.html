@@ -1,1 +1,139 @@
-<p>acta-visor-modal works!</p>
+<ion-header class="ion-no-border">
+  <ion-toolbar class="cne-toolbar">
+    <ion-title>Acta JRV N.° {{ acta.jrvNumero }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" color="light" (click)="cerrar(false)">
+        <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="visor-content">
+  <div class="contenedor-visor">
+    <ion-card class="card-visor">
+      <ion-card-header>
+        <div class="cabecera-estado">
+          <span class="codigo-acta">{{ acta.ID || ('ACTA-' + acta.jrvID) }}</span>
+          <ion-badge [color]="acta.estado === 'Validada' ? 'success' : 'danger'">
+            {{ acta.estado }}
+          </ion-badge>
+        </div>
+        <ion-card-title>{{ acta.nombreRecinto }}</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <div class="meta-veedor">
+          <div>
+            <small>Veedor Responsable</small>
+            <strong>{{ acta.veedorNombre }}</strong>
+          </div>
+          <div>
+            <small>Cédula</small>
+            <strong>{{ acta.veedorCedula }}</strong>
+          </div>
+        </div>
+
+        <app-gps-badge [coordenadas]="acta.gps"></app-gps-badge>
+
+        @if (acta.fotoUrl) {
+          <div class="foto-acta-box">
+            <img [src]="acta.fotoUrl" alt="Fotografía oficial del acta" />
+          </div>
+        }
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card class="card-visor">
+      <ion-card-header>
+        <ion-card-title>Escrutinio Registrado</ion-card-title>
+      </ion-card-header>
+      <ion-card-content class="ion-no-padding">
+        <ion-list lines="full">
+          @for (item of acta.votosPorLista; track item.listaID) {
+            <ion-item>
+              <ion-label>
+                <h3>Lista {{ item.listaPerteneciente }} • {{ item.siglas }}</h3>
+              </ion-label>
+              <ion-badge slot="end" color="primary" class="badge-voto">
+                {{ item.votos }}
+              </ion-badge>
+            </ion-item>
+          }
+
+          <ion-item>
+            <ion-label>Votos Blancos</ion-label>
+            <strong slot="end">{{ acta.votosBlancos }}</strong>
+          </ion-item>
+
+          <ion-item>
+            <ion-label>Votos Nulos</ion-label>
+            <strong slot="end">{{ acta.votosNulos }}</strong>
+          </ion-item>
+
+          <ion-item>
+            <ion-label>Total Calculado</ion-label>
+            <strong slot="end">{{ acta.totalCalculado }}</strong>
+          </ion-item>
+
+          <ion-item lines="none">
+            <ion-label>Total Sufragantes</ion-label>
+            <strong slot="end" color="primary">{{ acta.totalSufragantes }}</strong>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    @if (puedeValidar) {
+      <ion-card class="card-visor">
+        <ion-card-header>
+          <ion-card-title>Dictamen de Validación</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-item lines="outline" class="campo-obs">
+            <ion-input
+              label="Observación / Nota de revisión"
+              labelPlacement="floating"
+              type="text"
+              [(ngModel)]="observacion"
+              placeholder="Ej. Cuadre verificado con acta física"
+            ></ion-input>
+          </ion-item>
+
+          @if (errorMensaje()) {
+            <ion-note color="danger" class="error-msg">
+              {{ errorMensaje() }}
+            </ion-note>
+          }
+
+          <div class="acciones-dictamen">
+            <ion-button
+              expand="block"
+              color="success"
+              [disabled]="guardando()"
+              (click)="cambiarEstado('Validada')"
+            >
+              @if (guardando()) {
+                <ion-spinner name="crescent"></ion-spinner>
+              } @else {
+                <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
+                Validar Acta
+              }
+            </ion-button>
+
+            <ion-button
+              expand="block"
+              color="danger"
+              fill="outline"
+              [disabled]="guardando()"
+              (click)="cambiarEstado('Observada')"
+            >
+              <ion-icon slot="start" name="alert-circle-outline"></ion-icon>
+              Marcar Observada
+            </ion-button>
+          </div>
+        </ion-card-content>
+      </ion-card>
+    }
+  </div>
+</ion-content>

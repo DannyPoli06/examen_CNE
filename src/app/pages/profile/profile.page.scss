@@ -1,0 +1,79 @@
+.cne-toolbar {
+  --background: #0057b8;
+  --color: #ffffff;
+}
+
+.profile-content {
+  --background: #f4f6f9;
+}
+
+.profile-banner {
+  background: linear-gradient(135deg, #0057b8 0%, #0072e5 100%);
+  color: #ffffff;
+  text-align: center;
+  padding: 20px 16px 36px;
+  border-bottom-left-radius: 26px;
+  border-bottom-right-radius: 26px;
+
+  .avatar-cne {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid #ffd100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #ffffff;
+  }
+
+  h2 {
+    margin: 0 0 8px;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .rol-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+  }
+}
+
+.profile-body {
+  padding: 0 16px 28px;
+  max-width: 540px;
+  margin: -18px auto 0;
+}
+
+.info-card {
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  margin: 0 0 16px;
+  border: 1px solid #e8edf3;
+
+  ion-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  h3 {
+    font-weight: 600;
+    color: #1e293b;
+    margin-top: 2px;
+  }
+
+  small {
+    color: #64748b;
+  }
+}
+
+.btn-cerrar-sesion {
+  margin-top: 12px;
+  height: 46px;
+  font-weight: 700;
+  --border-radius: 12px;
+}

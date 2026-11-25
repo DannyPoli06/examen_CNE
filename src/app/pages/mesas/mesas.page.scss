@@ -1,0 +1,128 @@
+.cne-toolbar {
+  --background: #0057b8;
+  --color: #ffffff;
+}
+
+.mesas-recinto-content {
+  --background: #f4f6f9;
+}
+
+.banner-recinto {
+  background: linear-gradient(135deg, #0057b8 0%, #0072e5 100%);
+  color: #ffffff;
+  padding: 14px 20px 36px;
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+
+  .badge-rol {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.7px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffd100;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 6px 0 14px;
+    font-size: 0.85rem;
+    opacity: 0.92;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+
+  .resumen-item {
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    padding: 8px 6px;
+    text-align: center;
+
+    strong {
+      display: block;
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    span {
+      font-size: 0.7rem;
+      opacity: 0.9;
+    }
+  }
+}
+
+.contenedor-mesas {
+  padding: 0 16px 32px;
+  max-width: 600px;
+  margin: -18px auto 0;
+}
+
+.filtros-card,
+.jrv-card {
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  margin: 0 0 14px;
+  border: 1px solid #e8edf3;
+}
+
+.filtro-estado-item {
+  margin-top: 8px;
+  --background: #f8fafc;
+  --border-radius: 12px;
+}
+
+.jrv-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.jrv-tag {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #0057b8;
+  background: #eff6ff;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+ion-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.select-veedor {
+  --background: #f8fafc;
+  --border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+.btn-ver-acta {
+  --border-radius: 12px;
+  height: 42px;
+  font-weight: 700;
+}
+
+.cargando-box {
+  text-align: center;
+  padding: 28px 16px;
+  color: #64748b;
+}

@@ -1,13 +1,96 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>profile</ion-title>
+<ion-header class="ion-no-border">
+  <ion-toolbar class="cne-toolbar">
+    <ion-title>Mi Perfil Electoral</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">profile</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content class="profile-content">
+  <div class="profile-banner">
+    <ion-avatar class="avatar-cne">
+      <span>{{ iniciales() }}</span>
+    </ion-avatar>
+    <h2>{{ perfil()?.nombres || 'Funcionario CNE' }}</h2>
+    <ion-badge color="warning" class="rol-badge">
+      {{ etiquetaRol() }}
+    </ion-badge>
+  </div>
+
+  <div class="profile-body">
+    <ion-card class="info-card">
+      <ion-card-header>
+        <ion-card-title>Credenciales del Delegado</ion-card-title>
+      </ion-card-header>
+      <ion-card-content class="ion-no-padding">
+        <ion-list lines="full">
+          <ion-item>
+            <ion-icon slot="start" name="card-outline" color="primary"></ion-icon>
+            <ion-label>
+              <p>Cédula de Identidad</p>
+              <h3>{{ perfil()?.cedula || '—' }}</h3>
+            </ion-label>
+          </ion-item>
+
+          <ion-item>
+            <ion-icon slot="start" name="mail-outline" color="primary"></ion-icon>
+            <ion-label>
+              <p>Correo Registrado</p>
+              <h3>{{ perfil()?.correo || '—' }}</h3>
+            </ion-label>
+          </ion-item>
+
+          <ion-item lines="none">
+            <ion-icon slot="start" name="shield-checkmark-outline" color="success"></ion-icon>
+            <ion-label>
+              <p>Provincia Asignada</p>
+              <h3>{{ perfil()?.provinciaID || 'PICHINCHA' }}</h3>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    @if (recinto() || jrv()) {
+      <ion-card class="info-card">
+        <ion-card-header>
+          <ion-card-title>Asignación Operativa</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="ion-no-padding">
+          <ion-list lines="full">
+            @if (recinto(); as r) {
+              <ion-item>
+                <ion-icon slot="start" name="business-outline" color="primary"></ion-icon>
+                <ion-label class="ion-text-wrap">
+                  <p>Recinto Electoral</p>
+                  <h3>{{ r.nombre }}</h3>
+                  <small>{{ r.direccion }}</small>
+                </ion-label>
+              </ion-item>
+            }
+
+            @if (jrv(); as mesa) {
+              <ion-item lines="none">
+                <ion-icon slot="start" name="checkbox-outline" color="primary"></ion-icon>
+                <ion-label>
+                  <p>Junta Receptora del Voto</p>
+                  <h3>JRV N.° {{ mesa.numero }} ({{ mesa.genero }})</h3>
+                  <small>Electores habilitados: {{ mesa.electores }}</small>
+                </ion-label>
+              </ion-item>
+            }
+          </ion-list>
+        </ion-card-content>
+      </ion-card>
+    }
+
+    <ion-button
+      expand="block"
+      color="danger"
+      fill="outline"
+      class="btn-cerrar-sesion"
+      (click)="cerrarSesion()"
+    >
+      <ion-icon slot="start" name="log-out-outline"></ion-icon>
+      Cerrar Sesión
+    </ion-button>
+  </div>
 </ion-content>

@@ -1,1 +1,31 @@
-<p>ui-state-banner works!</p>
+@if (!syncService.estaEnLinea()) {
+  <div class="banner banner-offline">
+    <ion-icon name="cloud-offline-outline"></ion-icon>
+    <div class="banner-texto">
+      <strong>Sin conexión a internet</strong>
+      <span>Puedes capturar el acta; se guardará localmente para enviarla luego.</span>
+    </div>
+  </div>
+} @else if (syncService.colaPendiente().length > 0) {
+  <div class="banner banner-pendiente">
+    <ion-icon name="cloud-upload-outline"></ion-icon>
+    <div class="banner-texto">
+      <strong>{{ syncService.colaPendiente().length }} acta(s) pendiente(s) de envío</strong>
+      <span>Conexión restablecida.</span>
+    </div>
+    <ion-button
+      size="small"
+      fill="solid"
+      color="warning"
+      [disabled]="syncService.sincronizando()"
+      (click)="sincronizarAhora()"
+    >
+      @if (syncService.sincronizando()) {
+        <ion-spinner name="crescent"></ion-spinner>
+      } @else {
+        <ion-icon slot="start" name="sync-outline"></ion-icon>
+        Subir
+      }
+    </ion-button>
+  </div>
+}

@@ -1,13 +1,109 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>mis-mesas</ion-title>
+<ion-header class="ion-no-border">
+  <ion-toolbar class="cne-toolbar">
+    <ion-title>Mis Mesas Asignadas</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">mis-mesas</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content class="mesas-content">
+  <ion-refresher slot="fixed" (ionRefresh)="refrescar($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="header-contexto">
+    <span class="tag-proceso">JORNADA ELECTORAL 2026</span>
+    <h2>Hola, {{ perfil()?.nombres || 'Veedor' }}</h2>
+    @if (recinto(); as r) {
+      <p>
+        <ion-icon name="business-outline"></ion-icon>
+        {{ r.nombre }} • {{ r.canton }}
+      </p>
+    }
+  </div>
+
+  <div class="contenedor-principal">
+    <app-ui-state-banner></app-ui-state-banner>
+
+    @if (sessionStore.cargandoContexto() || cargandoActa()) {
+      <div class="estado-vacio">
+        <ion-spinner name="crescent" color="primary"></ion-spinner>
+        <p>Cargando asignación electoral...</p>
+      </div>
+    } @else if (jrv(); as mesa) {
+      <ion-card class="mesa-card">
+        <ion-card-header>
+          <div class="card-top-row">
+            <span class="jrv-codigo">{{ mesa.ID }}</span>
+            <ion-badge [color]="estadoVisual().color">
+              {{ estadoVisual().texto }}
+            </ion-badge>
+          </div>
+          <ion-card-title>
+            Junta Receptora N.° {{ mesa.numero }} ({{ mesa.genero }})
+          </ion-card-title>
+          <ion-card-subtitle>
+            <ion-icon name="people-outline"></ion-icon>
+            Padrón de mesa: <strong>{{ mesa.electores }} electores</strong>
+          </ion-card-subtitle>
+        </ion-card-header>
+
+        <ion-card-content>
+          @if (actaActual(); as acta) {
+            <div class="resumen-acta">
+              <div class="metrica">
+                <span>Sufragantes</span>
+                <strong>{{ acta.totalSufragantes }}</strong>
+              </div>
+              <div class="metrica">
+                <span>Blancos</span>
+                <strong>{{ acta.votosBlancos }}</strong>
+              </div>
+              <div class="metrica">
+                <span>Nulos</span>
+                <strong>{{ acta.votosNulos }}</strong>
+              </div>
+            </div>
+
+            @if (acta.observacion) {
+              <div class="alerta-observacion">
+                <ion-icon name="alert-circle-outline"></ion-icon>
+                <div>
+                  <strong>Observación del Coordinador:</strong>
+                  <p>{{ acta.observacion }}</p>
+                </div>
+              </div>
+            }
+          }
+
+          <ion-button
+            expand="block"
+            class="btn-accion"
+            [color]="actaActual()?.estado === 'Observada' ? 'danger' : 'primary'"
+            [disabled]="actaActual()?.estado === 'Validada'"
+            (click)="irARegistrarActa()"
+          >
+            <ion-icon slot="start" name="camera-outline"></ion-icon>
+            @if (actaActual()?.estado === 'Validada') {
+              Acta Validada (Solo Lectura)
+            } @else if (actaActual()?.estado === 'Observada') {
+              Corregir y Reenviar Acta
+            } @else if (actaActual()) {
+              Ver o Actualizar Acta Enviada
+            } @else {
+              Registrar Acta y Capturar Foto
+            }
+          </ion-button>
+        </ion-card-content>
+      </ion-card>
+    } @else {
+      <ion-card class="mesa-card">
+        <ion-card-content class="estado-vacio">
+          <ion-icon name="document-text-outline" class="icono-vacio"></ion-icon>
+          <h3>Sin JRV asignada</h3>
+          <p>
+            Aún no tienes una mesa asignada. Solicita al Coordinador de Recinto que te habilite una JRV.
+          </p>
+        </ion-card-content>
+      </ion-card>
+    }
+  </div>
 </ion-content>
