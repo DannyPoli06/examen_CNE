@@ -1,13 +1,10 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>tabs</ion-title>
-  </ion-toolbar>
-</ion-header>
-
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">tabs</ion-title>
-    </ion-toolbar>
-  </ion-header>
-</ion-content>
+<ion-tabs>
+  <ion-tab-bar slot="bottom" class="cne-tab-bar">
+    @for (item of tabsDisponibles(); track item.tab) {
+      <ion-tab-button [tab]="item.tab" [href]="'/tabs/' + item.tab">
+        <ion-icon [name]="item.icon"></ion-icon>
+        <ion-label>{{ item.label }}</ion-label>
+      </ion-tab-button>
+    }
+  </ion-tab-bar>
+</ion-tabs>

@@ -1,0 +1,18 @@
+.cne-tab-bar {
+  --background: #ffffff;
+  --border: 1px solid #e2e8f0;
+  height: 62px;
+  padding-bottom: env(safe-area-inset-bottom);
+
+  ion-tab-button {
+    --color: #64748b;
+    --color-selected: #0057b8;
+    font-weight: 600;
+    font-size: 0.74rem;
+
+    ion-icon {
+      font-size: 22px;
+      margin-bottom: 2px;
+    }
+  }
+}
