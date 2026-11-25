@@ -53,6 +53,7 @@ import {
   ActaElectoral,
   JrvMesa,
   RecintoElectoral,
+  UbicacionGps,
 } from '../../core/models/electoral.models';
 import { ActasService } from '../../core/services/actas';
 import { GeoService } from '../../core/services/geo';
@@ -67,6 +68,7 @@ interface RecintoConMetricas extends RecintoElectoral {
   actasRegistradas: number;
   actasObservadas: number;
   actasValidadas: number;
+  actasLista: ActaElectoral[];
 }
 
 @Component({
@@ -126,8 +128,8 @@ export class RecintosPage implements OnInit, OnDestroy {
   nuevaParroquia = '';
   nuevaDireccion = '';
   nuevoTotalJrvs = 2;
-  nuevoGpsLat = -0.1807;
-  nuevoGpsLng = -78.4842;
+  readonly coordenadasNuevoRecinto = signal<UbicacionGps | null>(null);
+  readonly capturandoGpsRecinto = signal<boolean>(false);
 
   // Datos formulario nuevo coordinador
   nuevoCoordCedula = '';
@@ -136,7 +138,7 @@ export class RecintosPage implements OnInit, OnDestroy {
   nuevoCoordTelefono = '';
   nuevoCoordCorreo = '';
 
-  textoBusqueda = '';
+  readonly textoBusqueda = signal<string>('');
 
   private desuscribirRecintos?: Unsubscribe;
   private desuscribirMesas?: Unsubscribe;
@@ -155,12 +157,13 @@ export class RecintosPage implements OnInit, OnDestroy {
         actasRegistradas: actasDelRecinto.length,
         actasObservadas: actasDelRecinto.filter((a) => a.estado === 'Observada').length,
         actasValidadas: actasDelRecinto.filter((a) => a.estado === 'Validada').length,
+        actasLista: actasDelRecinto,
       };
     });
   });
 
   readonly recintosFiltrados = computed(() => {
-    const texto = this.textoBusqueda.trim().toLowerCase();
+    const texto = this.textoBusqueda().trim().toLowerCase();
     if (!texto) {
       return this.recintosConMetricas();
     }
@@ -263,6 +266,7 @@ export class RecintosPage implements OnInit, OnDestroy {
     this.nuevaParroquia = '';
     this.nuevaDireccion = '';
     this.nuevoTotalJrvs = 2;
+    this.coordenadasNuevoRecinto.set(null);
     this.modalRecintoAbierto.set(true);
   }
 
@@ -271,12 +275,15 @@ export class RecintosPage implements OnInit, OnDestroy {
   }
 
   async capturarGpsParaRecinto(): Promise<void> {
+    this.errorModal.set('');
+    this.capturandoGpsRecinto.set(true);
     try {
       const pos = await this.geoService.obtenerUbicacionActual();
-      this.nuevoGpsLat = pos.lat;
-      this.nuevoGpsLng = pos.lng;
+      this.coordenadasNuevoRecinto.set(pos);
     } catch (e) {
       this.errorModal.set(e instanceof Error ? e.message : 'Error al obtener GPS');
+    } finally {
+      this.capturandoGpsRecinto.set(false);
     }
   }
 
@@ -284,6 +291,12 @@ export class RecintosPage implements OnInit, OnDestroy {
     this.errorModal.set('');
     if (!this.nuevoNombreRecinto.trim() || !this.nuevaParroquia.trim()) {
       this.errorModal.set('Completa el nombre y la parroquia del recinto.');
+      return;
+    }
+
+    const coords = this.coordenadasNuevoRecinto();
+    if (!coords) {
+      this.errorModal.set('Pulsa el botón para capturar las coordenadas GPS del recinto.');
       return;
     }
 
@@ -302,9 +315,9 @@ export class RecintosPage implements OnInit, OnDestroy {
         direccion: this.nuevaDireccion.trim().toUpperCase() || 'DIRECCIÓN ELECTORAL ASIGNADA',
         totalJRVS: Number(this.nuevoTotalJrvs) || 2,
         coordenadas: {
-          lat: this.nuevoGpsLat,
-          lng: this.nuevoGpsLng,
-          precision: 10,
+          lat: coords.lat,
+          lng: coords.lng,
+          precision: coords.precision ?? 12,
         },
       };
 
@@ -399,13 +412,7 @@ export class RecintosPage implements OnInit, OnDestroy {
     }
   }
 
-  async abrirUltimaActaRecinto(recintoID: string): Promise<void> {
-    const acta: ActaElectoral | undefined = this.actasService
-      .actas()
-      .find((a) => a.recintoID === recintoID);
-
-    if (!acta) return;
-
+  async abrirActaRecinto(acta: ActaElectoral): Promise<void> {
     const modal = await this.modalCtrl.create({
       component: ActaVisorModalComponent,
       componentProps: {

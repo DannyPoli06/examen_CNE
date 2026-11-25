@@ -6,11 +6,18 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import {
+  getFirestore,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  setDoc,
+} from 'firebase/firestore';
 
 const envPath = resolve('.env');
 if (!existsSync(envPath)) {
-  console.error('no se encontró el archivo .env para pdoer ingresare a la base.');
+  console.error('No se encontró el archivo .env para conectar con la base.');
   process.exit(1);
 }
 
@@ -50,25 +57,36 @@ async function asegurarUsuario(email, clave = 'Ecuador2026') {
 async function poblarDatos() {
   console.log('Iniciando carga inicial de datos electorales en Firebase...');
 
-  // Cédulas válidas módulo 10
-  const cedProvincial = '1713506374';
+  const cedProvincial = '1710000017';
+  const cedProvincialAlt = '1713506374';
   const cedCoordRecinto = '1710000025';
   const cedVeedor1 = '1710000033';
   const cedVeedor2 = '1710000041';
 
-  const uidProvincial = await asegurarUsuario(`${cedProvincial}@cne.gob.ec`, 'Ecuador2026');
-  const uidCoordRecinto = await asegurarUsuario(`${cedCoordRecinto}@cne.gob.ec`, 'Ecuador2026');
-  const uidVeedor1 = await asegurarUsuario(`${cedVeedor1}@cne.gob.ec`, 'Ecuador2026');
-  const uidVeedor2 = await asegurarUsuario(`${cedVeedor2}@cne.gob.ec`, 'Ecuador2026');
+  const correoProvincial = 'carlos.mendoza.cne2026@gmail.com';
+  const correoProvincialAlt = 'danny.provincial.cne2026@gmail.com';
+  const correoCoordRecinto = 'lucia.paredes.cne2026@gmail.com';
+  const correoVeedor1 = 'andres.salazar.cne2026@gmail.com';
+  const correoVeedor2 = 'valeria.torres.cne2026@gmail.com';
 
-  // Iniciar sesion para tener permisos de escritura
-  await signInWithEmailAndPassword(auth, `${cedProvincial}@cne.gob.ec`, 'Ecuador2026');
+  const uidProvincial = await asegurarUsuario(correoProvincial, 'Ecuador2026');
+  const uidProvincialAlt = await asegurarUsuario(correoProvincialAlt, 'Ecuador2026');
+  const uidCoordRecinto = await asegurarUsuario(correoCoordRecinto, 'Ecuador2026');
+  const uidVeedor1 = await asegurarUsuario(correoVeedor1, 'Ecuador2026');
+  const uidVeedor2 = await asegurarUsuario(correoVeedor2, 'Ecuador2026');
 
-  // 1. Usuarios con datos completos
+  await signInWithEmailAndPassword(auth, correoProvincial, 'Ecuador2026');
+
+  const usuariosExistentes = await getDocs(collection(db, 'usuarios'));
+  const creadoPorUid = new Map();
+  for (const d of usuariosExistentes.docs) {
+    creadoPorUid.set(d.id, d.data().creadoEn || ahora);
+  }
+
   await setDoc(doc(db, 'usuarios', uidProvincial), {
     uID: uidProvincial,
     cedula: cedProvincial,
-    correo: `${cedProvincial}@cne.gob.ec`,
+    correo: correoProvincial,
     nombres: 'Carlos Alberto',
     apellidos: 'Mendoza Loor',
     telefono: '0991234567',
@@ -76,13 +94,40 @@ async function poblarDatos() {
     provinciaID: '17',
     primeraVezAcceso: false,
     activo: true,
-    creadoEn: ahora,
+    creadoEn: creadoPorUid.get(uidProvincial) || ahora,
+  });
+
+  const uidsValidos = new Set([
+    uidProvincial,
+    uidProvincialAlt,
+    uidCoordRecinto,
+    uidVeedor1,
+    uidVeedor2,
+  ]);
+  for (const d of usuariosExistentes.docs) {
+    if (!uidsValidos.has(d.id)) {
+      await deleteDoc(doc(db, 'usuarios', d.id));
+    }
+  }
+
+  await setDoc(doc(db, 'usuarios', uidProvincialAlt), {
+    uID: uidProvincialAlt,
+    cedula: cedProvincialAlt,
+    correo: correoProvincialAlt,
+    nombres: 'Daniel Andrés',
+    apellidos: 'Díaz Bedón',
+    telefono: '0998877665',
+    rol: 'CoordRecinto',
+    provinciaID: '17',
+    primeraVezAcceso: false,
+    activo: true,
+    creadoEn: creadoPorUid.get(uidProvincialAlt) || ahora,
   });
 
   await setDoc(doc(db, 'usuarios', uidCoordRecinto), {
     uID: uidCoordRecinto,
     cedula: cedCoordRecinto,
-    correo: `${cedCoordRecinto}@cne.gob.ec`,
+    correo: correoCoordRecinto,
     nombres: 'Lucía Elena',
     apellidos: 'Paredes Viteri',
     telefono: '0987654321',
@@ -91,13 +136,13 @@ async function poblarDatos() {
     recintoID: 'REC-17-001',
     primeraVezAcceso: false,
     activo: true,
-    creadoEn: ahora,
+    creadoEn: creadoPorUid.get(uidCoordRecinto) || ahora,
   });
 
   await setDoc(doc(db, 'usuarios', uidVeedor1), {
     uID: uidVeedor1,
     cedula: cedVeedor1,
-    correo: `${cedVeedor1}@cne.gob.ec`,
+    correo: correoVeedor1,
     nombres: 'Andrés Marcelo',
     apellidos: 'Salazar Castro',
     telefono: '0971122334',
@@ -107,13 +152,13 @@ async function poblarDatos() {
     jrvID: 'JRV-17-001-01M',
     primeraVezAcceso: false,
     activo: true,
-    creadoEn: ahora,
+    creadoEn: creadoPorUid.get(uidVeedor1) || ahora,
   });
 
   await setDoc(doc(db, 'usuarios', uidVeedor2), {
     uID: uidVeedor2,
     cedula: cedVeedor2,
-    correo: `${cedVeedor2}@cne.gob.ec`,
+    correo: correoVeedor2,
     nombres: 'Valeria Patricia',
     apellidos: 'Torres Mora',
     telefono: '0969988776',
@@ -123,10 +168,20 @@ async function poblarDatos() {
     jrvID: 'JRV-17-001-01F',
     primeraVezAcceso: false,
     activo: true,
-    creadoEn: ahora,
+    creadoEn: creadoPorUid.get(uidVeedor2) || ahora,
   });
 
-  // 2. Recintos electorales
+  // Limpiar documentos antiguos en listas y jrvs para evitar duplicados
+  const listasExistentes = await getDocs(collection(db, 'listas'));
+  for (const d of listasExistentes.docs) {
+    await deleteDoc(doc(db, 'listas', d.id));
+  }
+
+  const jrvsExistentes = await getDocs(collection(db, 'jrvs'));
+  for (const d of jrvsExistentes.docs) {
+    await deleteDoc(doc(db, 'jrvs', d.id));
+  }
+
   await setDoc(doc(db, 'recintos', 'REC-17-001'), {
     ID: 'REC-17-001',
     provinciaID: '17',
@@ -151,7 +206,6 @@ async function poblarDatos() {
     coordenadas: { lat: -0.1807, lng: -78.4842, precision: 12 },
   });
 
-  // 3. Mesas JRVs
   await setDoc(doc(db, 'jrvs', 'JRV-17-001-01M'), {
     ID: 'JRV-17-001-01M',
     recintoID: 'REC-17-001',
@@ -196,9 +250,7 @@ async function poblarDatos() {
     estado: 'Pendiente',
   });
 
-  // 4. Cinco organizaciones para Alcaldía y cinco para Prefectura
   const listas = [
-    // Alcaldia de Quito
     {
       ID: 'ALC-01',
       dignidad: 'Alcalde',
@@ -239,8 +291,6 @@ async function poblarDatos() {
       nombrePartido: 'Movimiento CREO',
       candidato: 'Luz Marina Vega',
     },
-
-    // Prefectura de Pichincha
     {
       ID: 'PREF-01',
       dignidad: 'Prefecto',

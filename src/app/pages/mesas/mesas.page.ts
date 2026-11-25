@@ -51,6 +51,7 @@ import {
 
 import { firestoreDb } from '../../core/config/backend-clients';
 import {
+  ActaElectoral,
   EstadoMesa,
   JrvMesa,
   UsuarioPerfil,
@@ -120,14 +121,18 @@ export class MesasPage implements OnInit, OnDestroy {
   nuevoVeedorCorreo = '';
   mesaAsignarInicial = '';
 
-  filtroEstado: 'Todos' | EstadoMesa = 'Todos';
-  textoBusqueda = '';
+  readonly filtroEstado = signal<'Todos' | EstadoMesa>('Todos');
+  readonly textoBusqueda = signal<string>('');
 
   private desuscribirMesas?: Unsubscribe;
 
+  readonly mesasLibres = computed(() =>
+    this.mesas().filter((m) => !m.veedorUID)
+  );
+
   readonly mesasFiltradas = computed(() => {
-    const estado = this.filtroEstado;
-    const texto = this.textoBusqueda.trim().toLowerCase();
+    const estado = this.filtroEstado();
+    const texto = this.textoBusqueda().trim().toLowerCase();
 
     return this.mesas().filter((mesa) => {
       const coincideEstado = estado === 'Todos' || mesa.estado === estado;
@@ -227,6 +232,11 @@ export class MesasPage implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.veedores().some((v) => v.cedula === this.nuevoVeedorCedula.trim())) {
+      this.errorModalVeedor.set('Ya existe un veedor registrado con ese número de cédula.');
+      return;
+    }
+
     if (!this.nuevoVeedorNombres.trim() || !this.nuevoVeedorApellidos.trim()) {
       this.errorModalVeedor.set('Completa los nombres y apellidos del veedor.');
       return;
@@ -277,17 +287,23 @@ export class MesasPage implements OnInit, OnDestroy {
       where('recintoID', '==', recintoID)
     );
 
-    this.desuscribirMesas = onSnapshot(consulta, (snap) => {
-      const lista = snap.docs
-        .map((d) => {
-          const data = d.data() as JrvMesa;
-          return { ...data, ID: data.ID || d.id };
-        })
-        .sort((a, b) => a.numero - b.numero);
+    this.desuscribirMesas = onSnapshot(
+      consulta,
+      (snap) => {
+        const lista = snap.docs
+          .map((d) => {
+            const data = d.data() as JrvMesa;
+            return { ...data, ID: data.ID || d.id };
+          })
+          .sort((a, b) => a.numero - b.numero);
 
-      this.mesas.set(lista);
-      this.cargando.set(false);
-    });
+        this.mesas.set(lista);
+        this.cargando.set(false);
+      },
+      () => {
+        this.cargando.set(false);
+      }
+    );
   }
 
   private async cargarVeedoresRecinto(recintoID: string): Promise<void> {
@@ -298,40 +314,100 @@ export class MesasPage implements OnInit, OnDestroy {
     );
 
     const snap = await getDocs(consulta);
-    const lista = snap.docs
-      .map((d) => d.data() as UsuarioPerfil)
-      .filter((u) => u.activo);
+    const porCedula = new Map<string, UsuarioPerfil>();
+    for (const d of snap.docs) {
+      const u = d.data() as UsuarioPerfil;
+      if (u.activo && u.cedula) {
+        porCedula.set(u.cedula, u);
+      }
+    }
 
-    this.veedores.set(lista);
+    this.veedores.set(Array.from(porCedula.values()));
+  }
+
+  mesaOcupadaPorVeedor(veedorUID: string, mesaActualID: string): JrvMesa | undefined {
+    return this.mesas().find((m) => m.ID !== mesaActualID && m.veedorUID === veedorUID);
   }
 
   async asignarVeedor(mesa: JrvMesa, veedorUID: string): Promise<void> {
-    const veedor = this.veedores().find((v) => v.uID === veedorUID);
-    if (!veedor) return;
+    if ((mesa.veedorUID || '') === (veedorUID || '')) {
+      return;
+    }
 
     this.guardandoVeedorId.set(mesa.ID);
     try {
-      await Promise.all([
+      const operaciones: Promise<unknown>[] = [];
+
+      // Si se selecciona liberar la mesa
+      if (!veedorUID) {
+        operaciones.push(
+          updateDoc(doc(firestoreDb, 'jrvs', mesa.ID), {
+            veedorUID: '',
+            veedorNombre: '',
+          })
+        );
+        if (mesa.veedorUID) {
+          operaciones.push(
+            updateDoc(doc(firestoreDb, 'usuarios', mesa.veedorUID), {
+              jrvID: '',
+            })
+          );
+        }
+        await Promise.all(operaciones);
+        await this.cargarVeedoresRecinto(mesa.recintoID);
+        return;
+      }
+
+      const veedor = this.veedores().find((v) => v.uID === veedorUID);
+      if (!veedor) return;
+
+      // Verificar que no este asignado en otra mesa al mismo tiempo
+      const otraMesaOcupada = this.mesaOcupadaPorVeedor(veedor.uID, mesa.ID);
+      if (otraMesaOcupada) {
+        operaciones.push(
+          updateDoc(doc(firestoreDb, 'jrvs', otraMesaOcupada.ID), {
+            veedorUID: '',
+            veedorNombre: '',
+          })
+        );
+      }
+
+      // Si esta mesa tenia otro veedor antes, limpiar su jrvID
+      if (mesa.veedorUID && mesa.veedorUID !== veedor.uID) {
+        operaciones.push(
+          updateDoc(doc(firestoreDb, 'usuarios', mesa.veedorUID), {
+            jrvID: '',
+          })
+        );
+      }
+
+      const nombreCompleto = veedor.apellidos
+        ? `${veedor.nombres} ${veedor.apellidos}`
+        : veedor.nombres;
+
+      operaciones.push(
         updateDoc(doc(firestoreDb, 'jrvs', mesa.ID), {
           veedorUID: veedor.uID,
-          veedorNombre: veedor.nombres,
+          veedorNombre: nombreCompleto,
         }),
         updateDoc(doc(firestoreDb, 'usuarios', veedor.uID), {
           jrvID: mesa.ID,
           recintoID: mesa.recintoID,
-        }),
-      ]);
+        })
+      );
+
+      await Promise.all(operaciones);
+      await this.cargarVeedoresRecinto(mesa.recintoID);
     } finally {
       this.guardandoVeedorId.set('');
     }
   }
 
-  async verActaMesa(mesa: JrvMesa): Promise<void> {
-    const todas = this.actasService.actas();
-    const actaMesa = todas.find((a) => a.jrvID === mesa.ID);
-    const acta = actaMesa || (await this.actasService.obtenerActaPorId(mesa.actaID || `ACTA-${mesa.ID}-Alcalde`));
-    if (!acta) return;
+  actasDeMesa(jrvID: string): ActaElectoral[] {
+    return this.actasService.actas().filter((a) => a.jrvID === jrvID);
+  }
 
+  async verActaEspecifica(acta: ActaElectoral): Promise<void> {
     const modal = await this.modalCtrl.create({
       component: ActaVisorModalComponent,
       componentProps: {
@@ -341,6 +417,18 @@ export class MesasPage implements OnInit, OnDestroy {
     });
 
     await modal.present();
+  }
+
+  async verActaMesa(mesa: JrvMesa): Promise<void> {
+    const todas = this.actasDeMesa(mesa.ID);
+    const acta =
+      todas[0] ||
+      (await this.actasService.obtenerActaPorId(
+        mesa.actaID || `ACTA-${mesa.ID}-Alcalde`
+      ));
+    if (!acta) return;
+
+    await this.verActaEspecifica(acta);
   }
 
   colorEstado(estado: EstadoMesa): string {

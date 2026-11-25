@@ -73,7 +73,7 @@ Colecciones principales en Firestore:
 
 Todos los usuarios de prueba tienen configurada la contraseña inicial `Ecuador2026`:
 
-- **Coordinador Provincial:** cédula `1710000017`
-- **Coordinador de Recinto (REC-17-001):** cédula `1710000025`
-- **Veedor Mesa 1M (JRV-17-001-01M):** cédula `1710000033`
-- **Veedor Mesa 1F (JRV-17-001-01F):** cédula `1710000041`
+- **Coordinador Provincial:** cédula `1710000017` (o `1713506374`) - correo `carlos.mendoza.cne2026@gmail.com`
+- **Coordinador de Recinto (REC-17-001):** cédula `1710000025` - correo `lucia.paredes.cne2026@gmail.com`
+- **Veedor Mesa 1M (JRV-17-001-01M):** cédula `1710000033` - correo `andres.salazar.cne2026@gmail.com`
+- **Veedor Mesa 1F (JRV-17-001-01F):** cédula `1710000041` - correo `valeria.torres.cne2026@gmail.com`

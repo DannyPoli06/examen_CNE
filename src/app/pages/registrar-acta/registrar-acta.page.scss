@@ -214,3 +214,28 @@
   font-weight: 700;
   font-size: 1rem;
 }
+
+.aviso-acta-bloqueada {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #e0f2fe;
+  border: 1px solid #7dd3fc;
+  color: #0369a1;
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  font-size: 0.88rem;
+
+  ion-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+  }
+}
+
+.seccion-bloqueada {
+  opacity: 0.52;
+  filter: blur(0.6px) grayscale(30%);
+  pointer-events: none;
+  user-select: none;
+}

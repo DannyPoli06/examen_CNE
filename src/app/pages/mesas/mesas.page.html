@@ -52,8 +52,9 @@
       <ion-card-content>
         <ion-searchbar
           placeholder="Buscar JRV o veedor..."
-          [debounce]="200"
-          [(ngModel)]="textoBusqueda"
+          [debounce]="150"
+          [ngModel]="textoBusqueda()"
+          (ngModelChange)="textoBusqueda.set($event)"
           class="ion-no-padding"
         ></ion-searchbar>
 
@@ -61,7 +62,8 @@
           <ion-select
             label="Estado de JRV"
             labelPlacement="stacked"
-            [(ngModel)]="filtroEstado"
+            [ngModel]="filtroEstado()"
+            (ngModelChange)="filtroEstado.set($event)"
           >
             <ion-select-option value="Todos">Todos los estados</ion-select-option>
             <ion-select-option value="Pendiente">Pendiente</ion-select-option>
@@ -97,22 +99,44 @@
           <ion-card-content>
             <ion-item lines="outline" class="select-veedor">
               <ion-select
-                label="Asignar Veedor"
+                label="Asignar Veedor (1 por JRV)"
                 labelPlacement="floating"
                 interface="popover"
                 [value]="mesa.veedorUID || ''"
                 [disabled]="guardandoVeedorId() === mesa.ID"
                 (ionChange)="asignarVeedor(mesa, $event.detail.value)"
               >
+                <ion-select-option value="">-- Sin asignar (Liberar JRV) --</ion-select-option>
                 @for (v of veedores(); track v.uID) {
-                  <ion-select-option [value]="v.uID">
-                    {{ v.nombres }} ({{ v.cedula }})
-                  </ion-select-option>
+                  @if (mesaOcupadaPorVeedor(v.uID, mesa.ID); as otraMesa) {
+                    <ion-select-option [value]="v.uID" [disabled]="true">
+                      {{ v.nombres }} {{ v.apellidos || '' }} (Ocupado en JRV {{ otraMesa.numero }}{{ otraMesa.genero }})
+                    </ion-select-option>
+                  } @else {
+                    <ion-select-option [value]="v.uID">
+                      {{ v.nombres }} {{ v.apellidos || '' }} ({{ v.cedula }})
+                    </ion-select-option>
+                  }
                 }
               </ion-select>
             </ion-item>
 
-            @if (mesa.estado !== 'Pendiente' || mesa.actaID) {
+            @if (actasDeMesa(mesa.ID).length > 0) {
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+                @for (actaItem of actasDeMesa(mesa.ID); track actaItem.ID) {
+                  <ion-button
+                    expand="block"
+                    [color]="actaItem.dignidad === 'Prefecto' ? 'secondary' : 'primary'"
+                    size="small"
+                    class="btn-ver-acta"
+                    (click)="verActaEspecifica(actaItem)"
+                  >
+                    <ion-icon slot="start" name="document-text-outline"></ion-icon>
+                    Revisar Acta {{ actaItem.dignidad || 'Alcalde' }} ({{ actaItem.estado }})
+                  </ion-button>
+                }
+              </div>
+            } @else if (mesa.estado !== 'Pendiente' || mesa.actaID) {
               <ion-button
                 expand="block"
                 color="primary"
@@ -169,10 +193,10 @@
           </ion-item>
 
           <ion-item lines="outline" class="item-form">
-            <ion-select label="Asignar JRV Inicial (Opcional)" labelPlacement="floating" [(ngModel)]="mesaAsignarInicial" interface="popover">
+            <ion-select label="Asignar JRV Libre (Opcional)" labelPlacement="floating" [(ngModel)]="mesaAsignarInicial" interface="popover">
               <ion-select-option value="">Sin mesa asignada por ahora</ion-select-option>
-              @for (m of mesas(); track m.ID) {
-                <ion-select-option [value]="m.ID">JRV N.° {{ m.numero }} ({{ m.genero }})</ion-select-option>
+              @for (m of mesasLibres(); track m.ID) {
+                <ion-select-option [value]="m.ID">JRV N.° {{ m.numero }} ({{ m.genero }}) - Libre</ion-select-option>
               }
             </ion-select>
           </ion-item>

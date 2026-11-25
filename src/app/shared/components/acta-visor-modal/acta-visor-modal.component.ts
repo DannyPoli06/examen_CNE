@@ -17,6 +17,8 @@ import {
   IonLabel,
   IonList,
   IonNote,
+  IonSegment,
+  IonSegmentButton,
   IonSpinner,
   IonTitle,
   IonToolbar,
@@ -26,10 +28,12 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { addIcons } from 'ionicons';
 import {
   alertCircleOutline,
+  cameraOutline,
   checkmarkCircleOutline,
   closeOutline,
   createOutline,
   documentTextOutline,
+  imagesOutline,
   personOutline,
   saveOutline,
 } from 'ionicons/icons';
@@ -37,11 +41,13 @@ import {
 import { firestoreDb } from '../../../core/config/backend-clients';
 import {
   ActaElectoral,
+  DignidadElectoral,
   EstadoMesa,
   EstadoRegistroActa,
   VotoPorLista,
 } from '../../../core/models/electoral.models';
 import { ActasService } from '../../../core/services/actas';
+import { CamaraService } from '../../../core/services/camara';
 import { JrvService } from '../../../core/services/jrv';
 import { evaluarCuadreActa } from '../../../core/validators/acta';
 import { GpsBadgeComponent } from '../gps-badge/gps-badge.component';
@@ -69,6 +75,8 @@ import { GpsBadgeComponent } from '../gps-badge/gps-badge.component';
     IonInput,
     IonBadge,
     IonNote,
+    IonSegment,
+    IonSegmentButton,
     IonSpinner,
     GpsBadgeComponent,
   ],
@@ -79,12 +87,15 @@ export class ActaVisorModalComponent implements OnInit {
   private readonly modalCtrl = inject(ModalController);
   private readonly actasService = inject(ActasService);
   private readonly jrvService = inject(JrvService);
+  private readonly camaraService = inject(CamaraService);
 
   @Input({ required: true }) acta!: ActaElectoral;
   @Input() puedeValidar = true;
 
   observacion = '';
   readonly guardando = signal<boolean>(false);
+  readonly capturandoFoto = signal<boolean>(false);
+  readonly nuevaFotoDataUrl = signal<string>('');
   readonly errorMensaje = signal<string>('');
 
   // Modo edicion para coordinadores
@@ -103,6 +114,8 @@ export class ActaVisorModalComponent implements OnInit {
       personOutline,
       createOutline,
       saveOutline,
+      cameraOutline,
+      imagesOutline,
     });
   }
 
@@ -111,14 +124,58 @@ export class ActaVisorModalComponent implements OnInit {
     this.cargarDatosEdicion();
   }
 
+  async cambiarDignidadVisor(valor: unknown): Promise<void> {
+    if (valor !== 'Alcalde' && valor !== 'Prefecto') return;
+    const dignidad: DignidadElectoral = valor;
+    if ((this.acta.dignidad || 'Alcalde') === dignidad) return;
+
+    this.errorMensaje.set('');
+    this.guardando.set(true);
+    try {
+      const otraActa = await this.actasService.obtenerActaPorId(
+        `ACTA-${this.acta.jrvID}-${dignidad}`
+      );
+      if (!otraActa) {
+        this.errorMensaje.set(`Aún no se ha registrado el acta de ${dignidad} en esta JRV.`);
+        return;
+      }
+      this.acta = otraActa;
+      this.observacion = otraActa.observacion ?? '';
+      this.modoEdicion.set(false);
+      this.cargarDatosEdicion();
+    } finally {
+      this.guardando.set(false);
+    }
+  }
+
   private cargarDatosEdicion(): void {
     if (!this.acta) return;
     this.editVotosBlancos = this.acta.votosBlancos;
     this.editVotosNulos = this.acta.votosNulos;
     this.editSufragantes = this.acta.totalSufragantes;
+    this.nuevaFotoDataUrl.set('');
     this.votosEditados = {};
     for (const v of this.acta.votosPorLista || []) {
       this.votosEditados[v.listaID] = v.votos;
+    }
+  }
+
+  async cambiarFotoActa(usarGaleria = false): Promise<void> {
+    this.errorMensaje.set('');
+    this.capturandoFoto.set(true);
+    try {
+      const foto = await this.camaraService.capturarFotoActa(usarGaleria);
+      if (!foto.nitida) {
+        this.errorMensaje.set(
+          `Fotografía descartada por baja nitidez (índice ${foto.indiceEnfoque} / mínimo ${foto.minimoRequerido}).`
+        );
+        return;
+      }
+      this.nuevaFotoDataUrl.set(foto.dataUrl);
+    } catch (e) {
+      this.errorMensaje.set(e instanceof Error ? e.message : 'No se pudo capturar la nueva foto.');
+    } finally {
+      this.capturandoFoto.set(false);
     }
   }
 
@@ -133,13 +190,22 @@ export class ActaVisorModalComponent implements OnInit {
   }
 
   async guardarCorrecciones(): Promise<void> {
-    if (!this.acta.ID) return;
+    const actaID = this.acta.ID || `ACTA-${this.acta.jrvID}-${this.acta.dignidad || 'Alcalde'}`;
     this.errorMensaje.set('');
     this.guardando.set(true);
 
     try {
       const mesa = await this.jrvService.obtenerJrvPorId(this.acta.jrvID);
       const electores = mesa?.electores || 350;
+
+      let fotoUrlFinal = this.acta.fotoUrl;
+      if (this.nuevaFotoDataUrl()) {
+        fotoUrlFinal = await this.camaraService.subirFotoActa(
+          this.nuevaFotoDataUrl(),
+          this.acta.recintoID,
+          `${this.acta.jrvID}_${this.acta.dignidad || 'Alcalde'}_corr`
+        );
+      }
 
       const votosPorListaActualizados: VotoPorLista[] = (this.acta.votosPorLista || []).map((item) => ({
         ...item,
@@ -155,6 +221,9 @@ export class ActaVisorModalComponent implements OnInit {
       });
 
       const cambios: Partial<ActaElectoral> = {
+        ID: actaID,
+        dignidad: this.acta.dignidad || 'Alcalde',
+        fotoUrl: fotoUrlFinal,
         votosPorLista: votosPorListaActualizados,
         votosBlancos: Math.max(0, Math.floor(Number(this.editVotosBlancos) || 0)),
         votosNulos: Math.max(0, Math.floor(Number(this.editVotosNulos) || 0)),
@@ -164,16 +233,17 @@ export class ActaVisorModalComponent implements OnInit {
         observacion: cuadre.observacion || this.observacion.trim(),
       };
 
-      await updateDoc(doc(firestoreDb, 'actas', this.acta.ID), cambios);
+      await updateDoc(doc(firestoreDb, 'actas', actaID), cambios);
 
       const nuevoEstadoJrv: EstadoMesa = cuadre.estadoSugerido === 'Validada' ? 'Registrada' : 'Observada';
-      await this.jrvService.actualizarEstadoJrv(this.acta.jrvID, nuevoEstadoJrv, this.acta.ID);
+      await this.jrvService.actualizarEstadoJrv(this.acta.jrvID, nuevoEstadoJrv, actaID);
 
       this.acta = {
         ...this.acta,
         ...cambios,
       };
 
+      this.nuevaFotoDataUrl.set('');
       this.modoEdicion.set(false);
     } catch (err) {
       this.errorMensaje.set(err instanceof Error ? err.message : 'Error al guardar correcciones.');

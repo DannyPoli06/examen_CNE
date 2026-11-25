@@ -65,12 +65,15 @@ async enviarOEncolarActa(
   }
 
   encolarActaLocal(payload: RegistroActaPayload): ActaPendienteOffline {
+    const dignidad = payload.dignidad || 'Alcalde';
+    const colaID = `OFF-${payload.jrv.ID}-${dignidad}`;
     const colaActual = this.leerColaLocal();
-    const filtrada = colaActual.filter((item) => item.jrv.ID !== payload.jrv.ID);
+    const filtrada = colaActual.filter((item) => item.colaID !== colaID);
 
     const nuevaEntrada: ActaPendienteOffline = {
       ...payload,
-      colaID: `OFF-${payload.jrv.ID}`,
+      dignidad,
+      colaID,
       guardadaEn: new Date().toISOString(),
       intentos: 0,
     };
@@ -104,6 +107,7 @@ async enviarOEncolarActa(
           await this.actasService.registrarActaElectoral({
             jrv: item.jrv,
             veedor: item.veedor,
+            dignidad: item.dignidad,
             votosPorLista: item.votosPorLista,
             votosBlancos: item.votosBlancos,
             votosNulos: item.votosNulos,

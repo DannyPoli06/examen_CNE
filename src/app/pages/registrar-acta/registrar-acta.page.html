@@ -39,76 +39,94 @@
         </ion-card-header>
       </ion-card>
 
-      <!-- 1. Votos por Organización Política -->
-      <ion-card class="card-cne">
-        <ion-card-header>
-          <ion-card-title>1. Votos por Lista / Candidato</ion-card-title>
-          <ion-card-subtitle>Ingresa exactamente los valores del acta física</ion-card-subtitle>
-        </ion-card-header>
-        <ion-card-content class="ion-no-padding">
-          <ion-list lines="full">
-            @for (fila of filasListas(); track fila.listaID) {
-              <ion-item>
-                <ion-label class="ion-text-wrap">
-                  <span class="lista-tag">Lista {{ fila.listaPerteneciente }} • {{ fila.siglas }}</span>
-                  <h3>{{ fila.candidato }}</h3>
-                  <p>{{ fila.nombrePartido }}</p>
-                </ion-label>
+      @if (bloqueadoPorEnvio()) {
+        <div class="aviso-acta-bloqueada">
+          <ion-icon name="checkmark-circle-outline"></ion-icon>
+          <span>
+            El acta de <strong>{{ dignidad() }}</strong> ya fue transmitida. Los datos están bloqueados y no son editables.
+          </span>
+        </div>
+      }
+
+      <div [class.seccion-bloqueada]="bloqueadoPorEnvio()">
+        <!-- 1. Votos por Organización Política -->
+        <ion-card class="card-cne">
+          <ion-card-header>
+            <ion-card-title>1. Votos por Lista / Candidato</ion-card-title>
+            <ion-card-subtitle>Ingresa exactamente los valores del acta física</ion-card-subtitle>
+          </ion-card-header>
+          <ion-card-content class="ion-no-padding">
+            <ion-list lines="full">
+              @for (fila of filasListas(); track fila.listaID) {
+                <ion-item>
+                  <ion-label class="ion-text-wrap">
+                    <span class="lista-tag">Lista {{ fila.listaPerteneciente }} • {{ fila.siglas }}</span>
+                    <h3>{{ fila.candidato }}</h3>
+                    <p>{{ fila.nombrePartido }}</p>
+                  </ion-label>
+                  <ion-input
+                    slot="end"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    placeholder="0"
+                    class="input-voto"
+                    [disabled]="bloqueadoPorEnvio()"
+                    [ngModel]="fila.votos"
+                    (ngModelChange)="actualizarVotoLista(fila.listaID, $event)"
+                  ></ion-input>
+                </ion-item>
+              }
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- 2. Blancos, Nulos y Sufragantes -->
+        <ion-card class="card-cne">
+          <ion-card-header>
+            <ion-card-title>2. Resumen Numérico del Acta</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <div class="grid-totales">
+              <ion-item lines="outline" class="campo-num">
                 <ion-input
-                  slot="end"
+                  label="Votos Blancos"
+                  labelPlacement="floating"
                   type="number"
                   inputmode="numeric"
                   min="0"
-                  class="input-voto"
-                  [ngModel]="fila.votos"
-                  (ngModelChange)="actualizarVotoLista(fila.listaID, $event)"
+                  placeholder="0"
+                  [disabled]="bloqueadoPorEnvio()"
+                  [(ngModel)]="votosBlancos"
                 ></ion-input>
               </ion-item>
-            }
-          </ion-list>
-        </ion-card-content>
-      </ion-card>
 
-      <!-- 2. Blancos, Nulos y Sufragantes -->
-      <ion-card class="card-cne">
-        <ion-card-header>
-          <ion-card-title>2. Resumen Numérico del Acta</ion-card-title>
-        </ion-card-header>
-        <ion-card-content>
-          <div class="grid-totales">
-            <ion-item lines="outline" class="campo-num">
+              <ion-item lines="outline" class="campo-num">
+                <ion-input
+                  label="Votos Nulos"
+                  labelPlacement="floating"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  placeholder="0"
+                  [disabled]="bloqueadoPorEnvio()"
+                  [(ngModel)]="votosNulos"
+                ></ion-input>
+              </ion-item>
+            </div>
+
+            <ion-item lines="outline" class="campo-num sufragantes-item">
               <ion-input
-                label="Votos Blancos"
+                label="Total Sufragantes (Firmas/Huellas)"
                 labelPlacement="floating"
                 type="number"
                 inputmode="numeric"
                 min="0"
-                [(ngModel)]="votosBlancos"
+                placeholder="0"
+                [disabled]="bloqueadoPorEnvio()"
+                [(ngModel)]="totalSufragantes"
               ></ion-input>
             </ion-item>
-
-            <ion-item lines="outline" class="campo-num">
-              <ion-input
-                label="Votos Nulos"
-                labelPlacement="floating"
-                type="number"
-                inputmode="numeric"
-                min="0"
-                [(ngModel)]="votosNulos"
-              ></ion-input>
-            </ion-item>
-          </div>
-
-          <ion-item lines="outline" class="campo-num sufragantes-item">
-            <ion-input
-              label="Total Sufragantes (Firmas/Huellas)"
-              labelPlacement="floating"
-              type="number"
-              inputmode="numeric"
-              min="0"
-              [(ngModel)]="totalSufragantes"
-            ></ion-input>
-          </ion-item>
 
           @if (obtenerEvaluacionCuadre(); as cuadre) {
             <div
@@ -184,6 +202,11 @@
             </div>
 
             <div class="comprobacion-nitidez-box">
+              @if (puntajeNitidez() !== null) {
+                <p class="ion-no-margin" style="font-size: 0.85rem; color: #15803d; padding: 6px 12px 0;">
+                  <strong>Análisis automático superado:</strong> índice de enfoque {{ puntajeNitidez() }} (mínimo {{ umbralNitidez() }}).
+                </p>
+              }
               <ion-item lines="none" class="item-nitidez">
                 <ion-checkbox
                   [ngModel]="nitidezConfirmada()"
@@ -203,11 +226,13 @@
               label="Observación adicional del veedor (opcional)"
               labelPlacement="floating"
               rows="2"
+              [disabled]="bloqueadoPorEnvio()"
               [(ngModel)]="observacionManual"
             ></ion-textarea>
           </ion-item>
         </ion-card-content>
       </ion-card>
+      </div>
 
       @if (errorMensaje()) {
         <ion-note color="danger" class="error-texto">
@@ -217,13 +242,16 @@
 
       <ion-button
         expand="block"
-        color="success"
+        [color]="bloqueadoPorEnvio() ? 'medium' : 'success'"
         class="btn-enviar-acta"
-        [disabled]="enviando()"
+        [disabled]="enviando() || bloqueadoPorEnvio()"
         (click)="enviarActa()"
       >
         @if (enviando()) {
           <ion-spinner name="crescent"></ion-spinner>
+        } @else if (bloqueadoPorEnvio()) {
+          <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
+          Acta de {{ dignidad() }} ya transmitida
         } @else {
           <ion-icon slot="start" name="send-outline"></ion-icon>
           Transmitir Acta Electoral

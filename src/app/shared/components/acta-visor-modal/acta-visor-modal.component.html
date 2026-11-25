@@ -11,10 +11,19 @@
 
 <ion-content class="visor-content">
   <div class="contenedor-visor">
+    <ion-segment
+      [value]="acta.dignidad || 'Alcalde'"
+      (ionChange)="cambiarDignidadVisor($event.detail.value)"
+      style="margin-bottom: 12px; background: #fff; border-radius: 10px; border: 1px solid #cbd5e1;"
+    >
+      <ion-segment-button value="Alcalde">Acta Alcaldía</ion-segment-button>
+      <ion-segment-button value="Prefecto">Acta Prefectura</ion-segment-button>
+    </ion-segment>
+
     <ion-card class="card-visor">
       <ion-card-header>
         <div class="cabecera-estado">
-          <span class="codigo-acta">{{ acta.ID || ('ACTA-' + acta.jrvID) }}</span>
+          <span class="codigo-acta">{{ acta.ID || ('ACTA-' + acta.jrvID) }} • {{ acta.dignidad || 'Alcalde' }}</span>
           <ion-badge [color]="acta.estado === 'Validada' ? 'success' : 'danger'">
             {{ acta.estado }}
           </ion-badge>
@@ -36,9 +45,22 @@
 
         <app-gps-badge [coordenadas]="acta.gps"></app-gps-badge>
 
-        @if (acta.fotoUrl) {
+        @if (nuevaFotoDataUrl() || acta.fotoUrl) {
           <div class="foto-acta-box">
-            <img [src]="acta.fotoUrl" alt="Fotografía oficial del acta" />
+            <img [src]="nuevaFotoDataUrl() || acta.fotoUrl" alt="Fotografía oficial del acta" />
+          </div>
+        }
+
+        @if (modoEdicion()) {
+          <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <ion-button expand="block" size="small" fill="outline" [disabled]="capturandoFoto()" (click)="cambiarFotoActa(false)" style="flex: 1;">
+              <ion-icon slot="start" name="camera-outline"></ion-icon>
+              Reemplazar Foto
+            </ion-button>
+            <ion-button expand="block" size="small" fill="outline" [disabled]="capturandoFoto()" (click)="cambiarFotoActa(true)" style="flex: 1;">
+              <ion-icon slot="start" name="images-outline"></ion-icon>
+              Galería
+            </ion-button>
           </div>
         }
       </ion-card-content>

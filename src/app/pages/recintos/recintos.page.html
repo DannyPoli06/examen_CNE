@@ -47,8 +47,9 @@
       <ion-card-content class="ion-no-padding">
         <ion-searchbar
           placeholder="Buscar recinto, cantón o parroquia..."
-          [debounce]="200"
-          [(ngModel)]="textoBusqueda"
+          [debounce]="150"
+          [ngModel]="textoBusqueda()"
+          (ngModelChange)="textoBusqueda.set($event)"
         ></ion-searchbar>
       </ion-card-content>
     </ion-card>
@@ -106,17 +107,22 @@
               </div>
             </div>
 
-            @if (recinto.actasRegistradas > 0) {
-              <ion-button
-                expand="block"
-                fill="outline"
-                color="primary"
-                class="btn-inspeccionar"
-                (click)="abrirUltimaActaRecinto(recinto.ID)"
-              >
-                <ion-icon slot="start" name="document-text-outline"></ion-icon>
-                Inspeccionar Acta del Recinto
-              </ion-button>
+            @if (recinto.actasLista.length > 0) {
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+                @for (actaItem of recinto.actasLista; track actaItem.ID) {
+                  <ion-button
+                    expand="block"
+                    fill="outline"
+                    [color]="actaItem.dignidad === 'Prefecto' ? 'secondary' : 'primary'"
+                    size="small"
+                    class="btn-inspeccionar"
+                    (click)="abrirActaRecinto(actaItem)"
+                  >
+                    <ion-icon slot="start" name="document-text-outline"></ion-icon>
+                    Ver JRV N.° {{ actaItem.jrvNumero }} • {{ actaItem.dignidad || 'Alcalde' }} ({{ actaItem.estado }})
+                  </ion-button>
+                }
+              </div>
             }
           </ion-card-content>
         </ion-card>
@@ -162,10 +168,21 @@
           </ion-item>
 
           <div class="gps-field-box">
-            <small>Coordenadas: Lat {{ nuevoGpsLat | number:'1.4-4' }}, Lng {{ nuevoGpsLng | number:'1.4-4' }}</small>
-            <ion-button fill="outline" size="small" (click)="capturarGpsParaRecinto()">
+            @if (coordenadasNuevoRecinto(); as coords) {
+              <small class="ok-txt">
+                <strong>Ubicación guardada:</strong> Lat {{ coords.lat | number:'1.4-6' }}, Lng {{ coords.lng | number:'1.4-6' }}
+              </small>
+            } @else {
+              <small>Sin coordenadas capturadas todavía</small>
+            }
+            <ion-button
+              fill="outline"
+              size="small"
+              [disabled]="capturandoGpsRecinto()"
+              (click)="capturarGpsParaRecinto()"
+            >
               <ion-icon slot="start" name="locate-outline"></ion-icon>
-              Actualizar GPS
+              {{ capturandoGpsRecinto() ? 'Capturando...' : (coordenadasNuevoRecinto() ? 'Actualizar GPS' : 'Capturar Coordenadas GPS') }}
             </ion-button>
           </div>
 

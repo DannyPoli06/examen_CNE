@@ -1,10 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import {
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-} from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 
@@ -12,14 +8,10 @@ const firebaseApp = getApps().length ? getApp() : initializeApp(environment.fire
 
 export const firebaseAuth = getAuth(firebaseApp);
 
-export const firestoreDb = initializeFirestore(firebaseApp, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager(),
-  }),
-});
+export const firestoreDb = getFirestore(firebaseApp);
 
 export const supabaseClient: SupabaseClient = createClient(
-  environment.supabase.url,
+  environment.supabase.url.replace(/\/+$/, ''),
   environment.supabase.anonKey
 );
 

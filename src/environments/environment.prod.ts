@@ -10,7 +10,7 @@ export const environment = {
   },
   supabase: {
     url: 'https://bgkqmcgfavulnjdorbdc.supabase.co',
-    anonKey: 'TU_CLAVE_ANON_DE_SUPABASE',
+    anonKey: 'sb_publishable_dadTi_h9GXK-ZRnESby5Qg_3c6KYDWD',
     bucketActas: 'actas-fotos',
   },
 };

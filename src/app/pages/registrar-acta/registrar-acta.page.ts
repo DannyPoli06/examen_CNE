@@ -65,7 +65,7 @@ interface FilaVotoLista {
   siglas: string;
   nombrePartido: string;
   candidato: string;
-  votos: number;
+  votos: number | null;
 }
 
 @Component({
@@ -126,15 +126,18 @@ export class RegistrarActaPage implements OnInit {
 
   readonly dignidad = signal<DignidadElectoral>('Alcalde');
   readonly nitidezConfirmada = signal<boolean>(false);
+  readonly bloqueadoPorEnvio = computed(() => this.actaPrevia() !== null);
 
-  votosBlancos = 0;
-  votosNulos = 0;
-  totalSufragantes = 0;
+  votosBlancos: number | null = null;
+  votosNulos: number | null = null;
+  totalSufragantes: number | null = null;
   observacionManual = '';
 
   readonly gpsActual = signal<UbicacionGps | null>(null);
   readonly fotoDataUrl = signal<string>('');
   readonly fotoUrlExistente = signal<string>('');
+  readonly puntajeNitidez = signal<number | null>(null);
+  readonly umbralNitidez = signal<number>(32);
   readonly errorMensaje = signal<string>('');
 
   readonly sumaVotosListas = computed(() =>
@@ -177,10 +180,6 @@ export class RegistrarActaPage implements OnInit {
       this.catalogoTotal.set(todasListas);
 
       await this.cargarActaPorDignidad(this.dignidad());
-
-      if (!this.gpsActual()) {
-        await this.obtenerGps();
-      }
     } catch (error) {
       this.errorMensaje.set(
         error instanceof Error ? error.message : 'Error al cargar datos del acta.'
@@ -225,11 +224,13 @@ export class RegistrarActaPage implements OnInit {
       this.nitidezConfirmada.set(true);
     } else {
       this.actaPrevia.set(null);
-      this.votosBlancos = 0;
-      this.votosNulos = 0;
-      this.totalSufragantes = 0;
+      this.votosBlancos = null;
+      this.votosNulos = null;
+      this.totalSufragantes = null;
+      this.gpsActual.set(null);
       this.fotoDataUrl.set('');
       this.fotoUrlExistente.set('');
+      this.puntajeNitidez.set(null);
       this.nitidezConfirmada.set(false);
     }
 
@@ -241,7 +242,7 @@ export class RegistrarActaPage implements OnInit {
         siglas: l.siglas,
         nombrePartido: l.nombrePartido,
         candidato: l.candidato,
-        votos: previo ? previo.votos : 0,
+        votos: previo !== undefined ? previo.votos : null,
       };
     });
 
@@ -249,7 +250,9 @@ export class RegistrarActaPage implements OnInit {
   }
 
   actualizarVotoLista(listaID: string, valor: unknown): void {
-    const numero = Math.max(0, Math.floor(Number(valor) || 0));
+    if (this.bloqueadoPorEnvio()) return;
+    const texto = String(valor ?? '').trim();
+    const numero = texto === '' ? null : Math.max(0, Math.floor(Number(texto) || 0));
     this.filasListas.update((actual) =>
       actual.map((f) => (f.listaID === listaID ? { ...f, votos: numero } : f))
     );
@@ -293,9 +296,21 @@ export class RegistrarActaPage implements OnInit {
     this.errorMensaje.set('');
     try {
       const foto = await this.camaraService.capturarFotoActa(usarGaleria);
+      this.puntajeNitidez.set(foto.indiceEnfoque);
+      this.umbralNitidez.set(foto.minimoRequerido);
+
+      if (!foto.nitida) {
+        this.fotoDataUrl.set('');
+        this.nitidezConfirmada.set(false);
+        this.errorMensaje.set(
+          `La imagen no es suficientemente nítida (índice ${foto.indiceEnfoque} / mínimo ${foto.minimoRequerido}). Toma una foto mejor enfocada.`
+        );
+        return;
+      }
+
       this.fotoDataUrl.set(foto.dataUrl);
       this.fotoUrlExistente.set('');
-      this.nitidezConfirmada.set(false);
+      this.nitidezConfirmada.set(true);
     } catch (error) {
       this.errorMensaje.set(
         error instanceof Error ? error.message : 'No se pudo capturar la imagen.'
@@ -306,6 +321,9 @@ export class RegistrarActaPage implements OnInit {
   }
 
   async enviarActa(): Promise<void> {
+    if (this.bloqueadoPorEnvio()) {
+      return;
+    }
     this.errorMensaje.set('');
     const mesa = this.jrv();
     const veedor = this.sessionStore.perfil();

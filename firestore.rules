@@ -53,7 +53,7 @@ service cloud.firestore {
     }
 
     function textoOpcionalValido(data, campo, minLen, maxLen) {
-      return !(campo in data) || textoValido(data[campo], minLen, maxLen);
+      return !(campo in data) || data[campo] == null || data[campo] == '' || textoValido(data[campo], minLen, maxLen);
     }
 
     function correoValido(correo) {
@@ -253,8 +253,6 @@ service cloud.firestore {
           esCoordRecinto(resource.data.recintoID) ||
           (
             esVeedor(jrvID) &&
-            'veedorUID' in resource.data &&
-            resource.data.veedorUID == request.auth.uid &&
             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actaID'])
           )
         );
@@ -276,19 +274,15 @@ service cloud.firestore {
       allow create: if esActaValida(request.resource.data, actaID) && (
         esProvincial() ||
         esCoordRecinto(request.resource.data.recintoID) ||
-        (
-          esVeedor(request.resource.data.jrvID) &&
-          request.auth.uid == request.resource.data.veedorUID
-        )
+        esVeedor(request.resource.data.jrvID)
       );
 
       allow update: if esActaValida(request.resource.data, actaID) &&
-        inmutablesSinCambios(['ID', 'dignidad', 'recintoID', 'jrvID', 'veedorUID', 'creadaEn']) && (
+        inmutablesSinCambios(['recintoID', 'jrvID']) && (
           esProvincial() ||
           esCoordRecinto(resource.data.recintoID) ||
           (
-            esVeedor(resource.data.jrvID) &&
-            resource.data.veedorUID == request.auth.uid &&
+            esVeedor(request.resource.data.jrvID) &&
             resource.data.estado != 'Validada'
           )
         );
