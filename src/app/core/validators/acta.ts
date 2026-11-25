@@ -1,5 +1,7 @@
 import { EstadoRegistroActa, VotoPorLista } from '../models/electoral.models';
 
+//calcula si las actadas deben ser aprobadas, validadas o rechazadas
+
 export interface ResultadoCuadreActa {
   totalCalculado: number;
   cuadraConSufragantes: boolean;

@@ -1,6 +1,8 @@
 export function validarCedulaEcuador(cedula: string): boolean {
   const limpia = (cedula ?? '').trim();
 
+//vrifica q la cedula sea de verdad
+
   if (!/^\d{10}$/.test(limpia)) {
     return false;
   }
