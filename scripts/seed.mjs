@@ -51,7 +51,7 @@ async function poblarDatos() {
   console.log('Iniciando carga inicial de datos electorales en Firebase...');
 
   // Cédulas válidas módulo 10
-  const cedProvincial = '1710000017';
+  const cedProvincial = '1713506374';
   const cedCoordRecinto = '1710000025';
   const cedVeedor1 = '1710000033';
   const cedVeedor2 = '1710000041';
