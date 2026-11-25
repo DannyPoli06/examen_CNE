@@ -1,0 +1,299 @@
+rules_version = '2';
+
+// Modelo de datos asumido:
+// - usuarios/{userId}: uID, cedula, correo, nombres, apellidos?, telefono?, rol, provinciaID, recintoID?, jrvID?, primeraVezAcceso, activo, creadoEn, actualizadoEn?
+// - recintos/{recintoID}: ID, provinciaID, canton, parroquia, nombre, direccion, totalJRVS, coordinadorRecintoUID?, coordinadorNombre?, coordenadas?
+// - jrvs/{jrvID}: ID, recintoID, nombreRecinto, numero, genero, electores, estado, veedorUID?, veedorNombre?, actaID?
+// - listas/{listaID}: ID, dignidad, listaPerteneciente, siglas, nombrePartido, candidato
+// - actas/{actaID}: ID?, dignidad, recintoID, nombreRecinto, jrvID, jrvNumero, veedorUID, veedorCedula, veedorNombre, votosPorLista, votosBlancos, votosNulos, totalSufragantes, totalCalculado, fotoUrl, gps, estado, observacion?, sincronizadaOffline?, creadaEn
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Denegar todo por defecto
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Funciones auxiliares de autenticacion y roles
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function tienePerfil() {
+      return autenticado() &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function perfil() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function esProvincial() {
+      return tienePerfil() && perfil().rol == 'CoordProvincial';
+    }
+
+    function esCoordRecinto(recintoID) {
+      return tienePerfil() &&
+        perfil().rol == 'CoordRecinto' &&
+        'recintoID' in perfil() &&
+        perfil().recintoID == recintoID;
+    }
+
+    function esVeedor(jrvID) {
+      return tienePerfil() &&
+        perfil().rol == 'Veedor' &&
+        'jrvID' in perfil() &&
+        perfil().jrvID == jrvID;
+    }
+
+    // Funciones auxiliares de validacion de esquema y tipos
+    function textoValido(valor, minLen, maxLen) {
+      return valor is string && valor.size() >= minLen && valor.size() <= maxLen;
+    }
+
+    function textoOpcionalValido(data, campo, minLen, maxLen) {
+      return !(campo in data) || textoValido(data[campo], minLen, maxLen);
+    }
+
+    function correoValido(correo) {
+      return textoValido(correo, 5, 120) &&
+        correo.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    function urlValida(url) {
+      return textoValido(url, 8, 2000) &&
+        (url.matches('^https://.*') || url.matches('^http://.*'));
+    }
+
+    function ubicacionGpsValida(gps) {
+      return gps is map &&
+        gps.keys().hasAll(['lat', 'lng']) &&
+        gps.keys().hasOnly(['lat', 'lng', 'precision']) &&
+        gps.lat is number && gps.lat >= -90 && gps.lat <= 90 &&
+        gps.lng is number && gps.lng >= -180 && gps.lng <= 180 &&
+        (!('precision' in gps) || (gps.precision is number && gps.precision >= 0));
+    }
+
+    function inmutablesSinCambios(campos) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(campos);
+    }
+
+    // Validadores de dominio
+    function esUsuarioValido(data, userId) {
+      return data.keys().hasAll([
+          'uID', 'cedula', 'correo', 'nombres', 'rol',
+          'provinciaID', 'primeraVezAcceso', 'activo', 'creadoEn'
+        ]) &&
+        data.keys().hasOnly([
+          'uID', 'cedula', 'correo', 'nombres', 'apellidos', 'telefono',
+          'rol', 'provinciaID', 'recintoID', 'jrvID', 'primeraVezAcceso',
+          'activo', 'creadoEn', 'actualizadoEn'
+        ]) &&
+        data.uID == userId &&
+        textoValido(data.uID, 1, 128) &&
+        textoValido(data.cedula, 10, 13) &&
+        correoValido(data.correo) &&
+        textoValido(data.nombres, 1, 100) &&
+        textoOpcionalValido(data, 'apellidos', 1, 100) &&
+        textoOpcionalValido(data, 'telefono', 7, 20) &&
+        data.rol in ['CoordProvincial', 'CoordRecinto', 'Veedor'] &&
+        textoValido(data.provinciaID, 1, 20) &&
+        textoOpcionalValido(data, 'recintoID', 1, 64) &&
+        textoOpcionalValido(data, 'jrvID', 1, 64) &&
+        data.primeraVezAcceso is bool &&
+        data.activo is bool &&
+        textoValido(data.creadoEn, 10, 40) &&
+        textoOpcionalValido(data, 'actualizadoEn', 10, 40);
+    }
+
+    function esRecintoValido(data, recintoID) {
+      return data.keys().hasAll([
+          'ID', 'provinciaID', 'canton', 'parroquia',
+          'nombre', 'direccion', 'totalJRVS'
+        ]) &&
+        data.keys().hasOnly([
+          'ID', 'provinciaID', 'canton', 'parroquia', 'nombre', 'direccion',
+          'totalJRVS', 'coordinadorRecintoUID', 'coordinadorNombre', 'coordenadas'
+        ]) &&
+        data.ID == recintoID &&
+        textoValido(data.ID, 1, 64) &&
+        textoValido(data.provinciaID, 1, 20) &&
+        textoValido(data.canton, 1, 80) &&
+        textoValido(data.parroquia, 1, 120) &&
+        textoValido(data.nombre, 1, 160) &&
+        textoValido(data.direccion, 1, 200) &&
+        data.totalJRVS is number && data.totalJRVS >= 0 && data.totalJRVS <= 500 &&
+        textoOpcionalValido(data, 'coordinadorRecintoUID', 1, 128) &&
+        textoOpcionalValido(data, 'coordinadorNombre', 1, 150) &&
+        (!('coordenadas' in data) || ubicacionGpsValida(data.coordenadas));
+    }
+
+    function esJrvValida(data, jrvID) {
+      return data.keys().hasAll([
+          'ID', 'recintoID', 'nombreRecinto', 'numero',
+          'genero', 'electores', 'estado'
+        ]) &&
+        data.keys().hasOnly([
+          'ID', 'recintoID', 'nombreRecinto', 'numero', 'genero',
+          'electores', 'estado', 'veedorUID', 'veedorNombre', 'actaID'
+        ]) &&
+        data.ID == jrvID &&
+        textoValido(data.ID, 1, 64) &&
+        textoValido(data.recintoID, 1, 64) &&
+        textoValido(data.nombreRecinto, 1, 160) &&
+        data.numero is number && data.numero > 0 && data.numero <= 1000 &&
+        data.genero in ['M', 'F'] &&
+        data.electores is number && data.electores >= 0 && data.electores <= 1000 &&
+        data.estado in ['Pendiente', 'Registrada', 'Observada'] &&
+        textoOpcionalValido(data, 'veedorUID', 1, 128) &&
+        textoOpcionalValido(data, 'veedorNombre', 1, 150) &&
+        textoOpcionalValido(data, 'actaID', 1, 100);
+    }
+
+    function esListaValida(data, listaID) {
+      return data.keys().hasAll([
+          'ID', 'dignidad', 'listaPerteneciente',
+          'siglas', 'nombrePartido', 'candidato'
+        ]) &&
+        data.keys().hasOnly([
+          'ID', 'dignidad', 'listaPerteneciente',
+          'siglas', 'nombrePartido', 'candidato'
+        ]) &&
+        data.ID == listaID &&
+        textoValido(data.ID, 1, 64) &&
+        data.dignidad in ['Alcalde', 'Prefecto'] &&
+        textoValido(data.listaPerteneciente, 1, 20) &&
+        textoValido(data.siglas, 1, 20) &&
+        textoValido(data.nombrePartido, 1, 120) &&
+        textoValido(data.candidato, 1, 120);
+    }
+
+    function esActaValida(data, actaID) {
+      return data.keys().hasAll([
+          'dignidad', 'recintoID', 'nombreRecinto', 'jrvID', 'jrvNumero',
+          'veedorUID', 'veedorCedula', 'veedorNombre', 'votosPorLista',
+          'votosBlancos', 'votosNulos', 'totalSufragantes', 'totalCalculado',
+          'fotoUrl', 'gps', 'estado', 'creadaEn'
+        ]) &&
+        data.keys().hasOnly([
+          'ID', 'dignidad', 'recintoID', 'nombreRecinto', 'jrvID', 'jrvNumero',
+          'veedorUID', 'veedorCedula', 'veedorNombre', 'votosPorLista',
+          'votosBlancos', 'votosNulos', 'totalSufragantes', 'totalCalculado',
+          'fotoUrl', 'gps', 'estado', 'observacion', 'sincronizadaOffline', 'creadaEn'
+        ]) &&
+        (!('ID' in data) || data.ID == actaID) &&
+        data.dignidad in ['Alcalde', 'Prefecto'] &&
+        textoValido(data.recintoID, 1, 64) &&
+        textoValido(data.nombreRecinto, 1, 160) &&
+        textoValido(data.jrvID, 1, 64) &&
+        data.jrvNumero is number && data.jrvNumero > 0 && data.jrvNumero <= 1000 &&
+        textoValido(data.veedorUID, 1, 128) &&
+        textoValido(data.veedorCedula, 10, 13) &&
+        textoValido(data.veedorNombre, 1, 150) &&
+        data.votosPorLista is list && data.votosPorLista.size() <= 50 &&
+        data.votosBlancos is number && data.votosBlancos >= 0 && data.votosBlancos <= 1000 &&
+        data.votosNulos is number && data.votosNulos >= 0 && data.votosNulos <= 1000 &&
+        data.totalSufragantes is number && data.totalSufragantes >= 0 && data.totalSufragantes <= 1000 &&
+        data.totalCalculado is number && data.totalCalculado >= 0 && data.totalCalculado <= 5000 &&
+        urlValida(data.fotoUrl) &&
+        ubicacionGpsValida(data.gps) &&
+        data.estado in ['Pendiente', 'Ingresada', 'Observada', 'Validada'] &&
+        textoOpcionalValido(data, 'observacion', 0, 500) &&
+        (!('sincronizadaOffline' in data) || data.sincronizadaOffline is bool) &&
+        textoValido(data.creadaEn, 10, 40);
+    }
+
+    // Coleccion de usuarios del sistema electoral
+    match /usuarios/{userId} {
+      allow get: if autenticado();
+      // Permite consulta puntual por cedula (limit(1)) antes de iniciar sesion
+      allow list: if autenticado() || request.query.limit <= 1;
+
+      // Permite el flujo administrativo con instancia secundaria y carga inicial
+      allow create: if autenticado() && esUsuarioValido(request.resource.data, userId);
+
+      // Solo CoordProvincial, CoordRecinto del mismo recinto o el propio usuario
+      allow update: if autenticado() &&
+        esUsuarioValido(request.resource.data, userId) &&
+        inmutablesSinCambios(['uID', 'cedula', 'creadoEn']) && (
+          esProvincial() ||
+          (
+            'recintoID' in resource.data &&
+            esCoordRecinto(resource.data.recintoID) &&
+            request.resource.data.rol == resource.data.rol &&
+            (!('recintoID' in request.resource.data) || request.resource.data.recintoID == resource.data.recintoID)
+          ) ||
+          (
+            userId == request.auth.uid &&
+            inmutablesSinCambios(['rol', 'activo', 'provinciaID', 'recintoID', 'jrvID'])
+          )
+        );
+
+      allow delete: if esProvincial();
+    }
+
+    // Coleccion de recintos electorales
+    match /recintos/{recintoID} {
+      allow read: if autenticado();
+      allow create, update: if esProvincial() && esRecintoValido(request.resource.data, recintoID);
+      allow delete: if esProvincial();
+    }
+
+    // Coleccion de juntas receptoras del voto
+    match /jrvs/{jrvID} {
+      allow read: if autenticado();
+
+      allow create: if esJrvValida(request.resource.data, jrvID) &&
+        (esProvincial() || esCoordRecinto(request.resource.data.recintoID));
+
+      allow update: if esJrvValida(request.resource.data, jrvID) &&
+        inmutablesSinCambios(['ID', 'recintoID']) && (
+          esProvincial() ||
+          esCoordRecinto(resource.data.recintoID) ||
+          (
+            esVeedor(jrvID) &&
+            'veedorUID' in resource.data &&
+            resource.data.veedorUID == request.auth.uid &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actaID'])
+          )
+        );
+
+      allow delete: if esProvincial();
+    }
+
+    // Coleccion de listas y candidatos
+    match /listas/{listaID} {
+      allow read: if autenticado();
+      allow create, update: if esProvincial() && esListaValida(request.resource.data, listaID);
+      allow delete: if esProvincial();
+    }
+
+    // Coleccion de actas electorales
+    match /actas/{actaID} {
+      allow read: if autenticado();
+
+      allow create: if esActaValida(request.resource.data, actaID) && (
+        esProvincial() ||
+        esCoordRecinto(request.resource.data.recintoID) ||
+        (
+          esVeedor(request.resource.data.jrvID) &&
+          request.auth.uid == request.resource.data.veedorUID
+        )
+      );
+
+      allow update: if esActaValida(request.resource.data, actaID) &&
+        inmutablesSinCambios(['ID', 'dignidad', 'recintoID', 'jrvID', 'veedorUID', 'creadaEn']) && (
+          esProvincial() ||
+          esCoordRecinto(resource.data.recintoID) ||
+          (
+            esVeedor(resource.data.jrvID) &&
+            resource.data.veedorUID == request.auth.uid &&
+            resource.data.estado != 'Validada'
+          )
+        );
+
+      allow delete: if esProvincial();
+    }
+  }
+}

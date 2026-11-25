@@ -186,11 +186,12 @@
             <div class="comprobacion-nitidez-box">
               <ion-item lines="none" class="item-nitidez">
                 <ion-checkbox
-                  [(ngModel)]="nitidezConfirmada"
+                  [ngModel]="nitidezConfirmada()"
+                  (ngModelChange)="nitidezConfirmada.set($event)"
                   labelPlacement="end"
                 >
                   <span class="texto-nitidez">
-                    <strong>Comprobación de nitidez (R7):</strong> Confirmo que las firmas, números y texto del acta son totalmente legibles y sin reflejos.
+                    <strong>Comprobación de nitidez:</strong> Confirmo que las firmas, números y texto del acta son totalmente legibles y sin reflejos.
                   </span>
                 </ion-checkbox>
               </ion-item>

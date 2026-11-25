@@ -1,108 +1,23 @@
-import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
-import { Router } from '@angular/router';
-import {
-  IonAvatar,
-  IonBadge,
-  IonButton,
-  IonCard,
-  IonCardContent,
-  IonCardHeader,
-  IonCardTitle,
-  IonContent,
-  IonHeader,
-  IonIcon,
-  IonItem,
-  IonLabel,
-  IonList,
-  IonTitle,
-  IonToolbar,
-} from '@ionic/angular';
-import { addIcons } from 'ionicons';
-import {
-  businessOutline,
-  cardOutline,
-  checkboxOutline,
-  locationOutline,
-  logOutOutline,
-  mailOutline,
-  personOutline,
-  shieldCheckmarkOutline,
-} from 'ionicons/icons';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { ProfilePage } from './profile.page';
 
-import { AuthService } from '../../core/services/autenticacion';
-import { SessionStore } from '../../core/state/session.store';
+describe('ProfilePage', () => {
+  let component: ProfilePage;
+  let fixture: ComponentFixture<ProfilePage>;
 
-@Component({
-  selector: 'app-profile',
-  standalone: true,
-  imports: [
-    CommonModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonContent,
-    IonCard,
-    IonCardHeader,
-    IonCardTitle,
-    IonCardContent,
-    IonList,
-    IonItem,
-    IonLabel,
-    IonIcon,
-    IonBadge,
-    IonButton,
-    IonAvatar,
-  ],
-  templateUrl: './profile.page.html',
-  styleUrls: ['./profile.page.scss'],
-})
-export class ProfilePage {
-  private readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
-  readonly sessionStore = inject(SessionStore);
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [ProfilePage],
+      providers: [provideRouter([])],
+    }).compileComponents();
 
-  readonly perfil = this.sessionStore.perfil;
-  readonly recinto = this.sessionStore.recintoAsignado;
-  readonly jrv = this.sessionStore.jrvAsignada;
-
-  readonly etiquetaRol = computed(() => {
-    switch (this.perfil()?.rol) {
-      case 'CoordProvincial':
-        return 'Coordinador Provincial';
-      case 'CoordRecinto':
-        return 'Coordinador de Recinto';
-      case 'Veedor':
-        return 'Veedor Electoral';
-      default:
-        return 'Usuario Electoral';
-    }
+    fixture = TestBed.createComponent(ProfilePage);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
   });
 
-  readonly iniciales = computed(() => {
-    const nombres = this.perfil()?.nombres?.trim() ?? 'CN';
-    return nombres
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((parte) => parte[0]?.toUpperCase() ?? '')
-      .join('');
+  it('should create', () => {
+    expect(component).toBeTruthy();
   });
-
-  constructor() {
-    addIcons({
-      personOutline,
-      cardOutline,
-      mailOutline,
-      shieldCheckmarkOutline,
-      businessOutline,
-      locationOutline,
-      checkboxOutline,
-      logOutOutline,
-    });
-  }
-
-  async cerrarSesion(): Promise<void> {
-    await this.authService.salir();
-    await this.router.navigateByUrl('/login', { replaceUrl: true });
-  }
-}
+});

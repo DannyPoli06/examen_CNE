@@ -100,9 +100,9 @@ export class DashboardPage implements OnInit, OnDestroy {
   readonly totalJrvAmbito = signal<number>(0);
   readonly cargando = signal<boolean>(true);
 
-  modoConteo: 'todas' | 'validadas' = 'todas';
-  dignidadSeleccionada: DignidadElectoral = 'Alcalde';
-  recintoFiltro = 'todos';
+  readonly modoConteo = signal<'todas' | 'validadas'>('todas');
+  readonly dignidadSeleccionada = signal<DignidadElectoral>('Alcalde');
+  readonly recintoFiltro = signal<string>('todos');
 
   private desuscribirJrv?: Unsubscribe;
 
@@ -114,8 +114,9 @@ export class DashboardPage implements OnInit, OnDestroy {
     if (this.esCoordinadorRecinto()) {
       return this.recinto()?.nombre || 'Recinto Electoral';
     }
-    if (this.recintoFiltro !== 'todos') {
-      const match = this.recintosLista().find((r) => r.ID === this.recintoFiltro);
+    const filtro = this.recintoFiltro();
+    if (filtro !== 'todos') {
+      const match = this.recintosLista().find((r) => r.ID === filtro);
       return match ? match.nombre : `Provincia ${this.perfil()?.provinciaID || 'PICHINCHA'}`;
     }
     return `Provincia ${this.perfil()?.provinciaID || 'PICHINCHA'} (Consolidado)`;
@@ -123,14 +124,16 @@ export class DashboardPage implements OnInit, OnDestroy {
 
   readonly actasFiltradas = computed(() => {
     let todas = this.actasService.actas();
+    const filtro = this.recintoFiltro();
+    const dignidad = this.dignidadSeleccionada();
 
-    if (this.recintoFiltro !== 'todos') {
-      todas = todas.filter((a) => a.recintoID === this.recintoFiltro);
+    if (filtro !== 'todos') {
+      todas = todas.filter((a) => a.recintoID === filtro);
     }
 
-    todas = todas.filter((a) => !a.dignidad || a.dignidad === this.dignidadSeleccionada);
+    todas = todas.filter((a) => !a.dignidad || a.dignidad === dignidad);
 
-    if (this.modoConteo === 'validadas') {
+    if (this.modoConteo() === 'validadas') {
       return todas.filter((a) => a.estado === 'Validada');
     }
     return todas;
@@ -138,13 +141,15 @@ export class DashboardPage implements OnInit, OnDestroy {
 
   readonly metricasGenerales = computed(() => {
     let todasActas = this.actasService.actas();
+    const filtro = this.recintoFiltro();
+    const dignidad = this.dignidadSeleccionada();
 
-    if (this.recintoFiltro !== 'todos') {
-      todasActas = todasActas.filter((a) => a.recintoID === this.recintoFiltro);
+    if (filtro !== 'todos') {
+      todasActas = todasActas.filter((a) => a.recintoID === filtro);
     }
 
     todasActas = todasActas.filter(
-      (a) => !a.dignidad || a.dignidad === this.dignidadSeleccionada
+      (a) => !a.dignidad || a.dignidad === dignidad
     );
 
     const actasConteo = this.actasFiltradas();
@@ -177,8 +182,9 @@ export class DashboardPage implements OnInit, OnDestroy {
 
   readonly resultadosPorLista = computed<ResultadoLista[]>(() => {
     const actasConteo = this.actasFiltradas();
+    const dignidad = this.dignidadSeleccionada();
     const catalogo = this.listasCatalogo().filter(
-      (l) => !l.dignidad || l.dignidad === this.dignidadSeleccionada
+      (l) => !l.dignidad || l.dignidad === dignidad
     );
     const acumulado = new Map<string, number>();
 

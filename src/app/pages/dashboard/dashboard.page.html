@@ -29,7 +29,11 @@
   <div class="contenedor-dashboard">
     <app-ui-state-banner></app-ui-state-banner>
 
-    <ion-segment [(ngModel)]="dignidadSeleccionada" class="segmento-dignidad">
+    <ion-segment
+      [ngModel]="dignidadSeleccionada()"
+      (ngModelChange)="dignidadSeleccionada.set($event)"
+      class="segmento-dignidad"
+    >
       <ion-segment-button value="Alcalde">
         Alcaldía
       </ion-segment-button>
@@ -44,7 +48,8 @@
           <ion-select
             label="Ámbito de visualización"
             labelPlacement="floating"
-            [(ngModel)]="recintoFiltro"
+            [ngModel]="recintoFiltro()"
+            (ngModelChange)="recintoFiltro.set($event)"
             interface="popover"
           >
             <ion-select-option value="todos">Toda la Provincia (Consolidado)</ion-select-option>
@@ -56,7 +61,11 @@
       </div>
     }
 
-    <ion-segment [(ngModel)]="modoConteo" class="segmento-filtro">
+    <ion-segment
+      [ngModel]="modoConteo()"
+      (ngModelChange)="modoConteo.set($event)"
+      class="segmento-filtro"
+    >
       <ion-segment-button value="todas">
         Todas ({{ metricasGenerales().ingresadas }})
       </ion-segment-button>

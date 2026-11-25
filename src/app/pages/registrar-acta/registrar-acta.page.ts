@@ -190,7 +190,9 @@ export class RegistrarActaPage implements OnInit {
     }
   }
 
-  async cambiarDignidad(nuevaDignidad: DignidadElectoral): Promise<void> {
+  async cambiarDignidad(valor: unknown): Promise<void> {
+    if (valor !== 'Alcalde' && valor !== 'Prefecto') return;
+    const nuevaDignidad: DignidadElectoral = valor;
     if (this.dignidad() === nuevaDignidad) return;
     this.dignidad.set(nuevaDignidad);
     this.cargandoInicial.set(true);
